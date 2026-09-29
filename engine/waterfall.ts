@@ -164,3 +164,44 @@ export function buildWaterfall(price: number, i: CostInputs): Traced<Waterfall> 
 
   return traced(result, trace, paid.assumptions);
 }
+
+// --- the leakage funnel ---------------------------------------------------
+
+export type Funnel = {
+  dispatched: number;
+  delivered: number;
+  paid: number;
+  /** Rupees lost on refused parcels, across the dispatched count. */
+  rtoCost: number;
+  /** Rupees lost on parcels returned after delivery. */
+  returnCost: number;
+};
+
+/**
+ * The funnel per 100 parcels dispatched, from the cost model's own rates.
+ *
+ * What each failed parcel costs, line by line:
+ *   refused  — return freight, GST on it, packing, and the write-down on goods
+ *              (forward freight is credited back, so it is not a cost here)
+ *   returned — freight both ways, GST on both, packing, and the write-down
+ */
+export function funnelPer100(i: CostInputs): Funnel {
+  const writedown = i.returnWritedown ?? RETURN_WRITEDOWN;
+  const gst = i.gstOnFees ?? GST_ON_FEES;
+
+  const rtoParcels = 100 * i.rtoRate;
+  const delivered = 100 - rtoParcels;
+  const returnedParcels = delivered * i.returnRate;
+
+  const perRto = i.reverseFreight * (1 + gst) + i.packaging + i.cogs * writedown;
+  const perReturn =
+    (i.forwardFreight + i.reverseFreight) * (1 + gst) + i.packaging + i.cogs * writedown;
+
+  return {
+    dispatched: 100,
+    delivered,
+    paid: delivered - returnedParcels,
+    rtoCost: rtoParcels * perRto,
+    returnCost: returnedParcels * perReturn,
+  };
+}

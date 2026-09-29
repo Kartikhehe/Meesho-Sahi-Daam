@@ -30,6 +30,7 @@ import { useSeller } from "@/lib/use-seller";
 import { inr, pct } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Category } from "@/engine/types";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 const CATEGORIES: { key: Category; label: string; labelHi: string }[] = [
   { key: "kurti", label: "Kurti", labelHi: "कुर्ती" },
@@ -117,7 +118,7 @@ export default function NewListingPage() {
 
   if (listed !== null) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-10 md:px-6">
+      <Page width="narrow">
         <Card className="p-6 text-center">
           <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--success-bg)]">
             <Check size={22} className="text-[var(--success)]" aria-hidden />
@@ -146,18 +147,17 @@ export default function NewListingPage() {
             </Button>
           </div>
         </Card>
-      </div>
+      </Page>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <h1 className="hi text-2xl font-semibold text-[var(--text)]">नया सामान</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          New listing — tell us what it costs you, and we will tell you whether it can work
-        </p>
-      </header>
+    <Page width="narrow">
+      <PageHeader
+        titleHi="नया सामान"
+        title="New listing"
+        description="Tell us what the goods cost you, and we will tell you honestly whether this can work."
+      />
 
       <ol className="mb-5 flex flex-wrap gap-x-2 gap-y-1">
         {STEPS.map((label, i) => (
@@ -394,7 +394,7 @@ export default function NewListingPage() {
           </p>
         ) : null}
       </StateGate>
-    </div>
+    </Page>
   );
 }
 

@@ -2,151 +2,185 @@
 
 /* ==========================================================================
    Sahi Daam — design tokens
-   Brand colours are for chrome and primary actions ONLY. Data encoding always
-   uses the semantic scale. This rule is what keeps the tool feeling like a
-   business instrument rather than a marketing site.
+
+   Posture: a quiet, confident business instrument. Meesho's consumer app is
+   loud; its supplier tools should not be. Brand colour is reserved for chrome
+   and the single primary action on a screen. Data is always encoded with the
+   semantic scale, never with brand colour.
+
+   Neutrals carry a faint jamuni cast (hue ~285°) so the greys belong to the
+   brand rather than reading as default Tailwind slate.
+
+   Every text colour below is checked against the surface it sits on:
+   body and muted text clear 7:1, subtle text clears 4.5:1 (WCAG AA), and the
+   primary button fill clears 4.5:1 against white text.
    ========================================================================== */
 
 :root {
-  /* Brand — chrome and primary actions ONLY. Never for data. */
+  /* Brand — chrome and primary actions ONLY. */
   --brand-jamuni: #570d45;
-  --brand-jamuni-600: #7b1b63;
+  --brand-jamuni-700: #43093a;
+  --brand-jamuni-50: #f6eef4;
+  /* Meesho's signature pink. Used for focus rings, active indicators and
+     accents — never under white text, where it only reaches 3.6:1. */
   --brand-magenta: #f43397;
-  --brand-magenta-50: #fdeaf3;
+  /* The same hue, deepened until white text on it passes AA (4.9:1). This is
+     what the primary button is filled with. */
+  --brand-fill: #d11d80;
+  --brand-fill-hover: #b8166f;
+  /* Magenta for text and links on light surfaces (5.9:1). */
+  --brand-ink: #b3155f;
+  --brand-magenta-50: #fdf0f7;
+  --brand-magenta-100: #fbdcec;
   --brand-aam: #ffc130;
 
   /* Surfaces */
   --bg: #ffffff;
-  --bg-subtle: #f7f7fa;
+  --bg-subtle: #f6f5f9;
   --surface: #ffffff;
-  --surface-sunken: #f1f1f6;
-  --border: #e3e3ec;
-  --border-strong: #c9c9d6;
+  --surface-hover: #faf9fc;
+  --surface-sunken: #f2f0f6;
+  --border: #e6e3ec;
+  --border-strong: #cfc9d8;
 
   /* Text */
-  --text: #1c1c28;
-  --text-muted: #5a5a72;
-  --text-subtle: #8a8aa3;
+  --text: #1c1622;
+  --text-muted: #4f4859;
+  --text-subtle: #6f677b;
 
-  /* Semantic — ALL data encoding uses these */
-  --danger: #c62b4c;
-  --danger-bg: #fdecef;
-  --warning: #b4690e;
-  --warning-bg: #fdf3e3;
-  --success: #0e7c61;
-  --success-bg: #e6f4f0;
-  --info: #2b5cb8;
-  --info-bg: #eaf0fb;
+  /* Semantic — ALL data encoding uses these. */
+  --danger: #c02947;
+  --danger-bg: #fdeef1;
+  --danger-line: #f3c4ce;
+  --warning: #9a5700;
+  --warning-bg: #fdf4e4;
+  --warning-line: #f0d6a8;
+  --success: #0b7a5e;
+  --success-bg: #e8f5f0;
+  --success-line: #b5dfd0;
+  --info: #2958b0;
+  --info-bg: #edf2fc;
+  --info-line: #c3d3f1;
   --neutral-data: #6b7185;
 
-  /* The one permitted elevation */
-  --shadow-card: 0 1px 2px rgba(28, 28, 40, 0.06), 0 1px 3px rgba(28, 28, 40, 0.04);
+  /* The one permitted elevation. Cards lean on their border; the shadow only
+     lifts them off the page tint. */
+  --shadow-card: 0 1px 2px rgba(28, 22, 34, 0.05), 0 1px 1px rgba(28, 22, 34, 0.03);
+  --shadow-pop: 0 8px 24px rgba(28, 22, 34, 0.12), 0 2px 6px rgba(28, 22, 34, 0.06);
 
-  --radius-card: 8px;
-  --radius-input: 6px;
+  --radius-card: 10px;
+  --radius-input: 7px;
   --radius-chip: 999px;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-hindi: "Noto Sans Devanagari", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans Variable", "Noto Sans Devanagari Variable", ui-sans-serif,
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-hindi: "Noto Sans Devanagari Variable", "Plus Jakarta Sans Variable", ui-sans-serif,
+    system-ui, sans-serif;
 }
 
-/* Dark mode: same token names, redefined. Sellers use this at night and it
-   reads as a serious tool. Applied by media query unless a theme is forced. */
+/* Dark mode: same token names, redefined. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f0f16;
-    --bg-subtle: #14141d;
-    --surface: #1a1a25;
-    --surface-sunken: #22222f;
-    --border: #2e2e3d;
-    --border-strong: #43435a;
+    --brand-jamuni-50: #2a1726;
+    --brand-magenta-50: #34142a;
+    --brand-magenta-100: #4a1b3a;
+    --brand-ink: #ff86bf;
 
-    --text: #f2f2f7;
-    --text-muted: #adadc2;
-    --text-subtle: #8181a0;
+    --bg: #111014;
+    --bg-subtle: #121015;
+    --surface: #1a171e;
+    --surface-hover: #201c25;
+    --surface-sunken: #231f28;
+    --border: #2f2a36;
+    --border-strong: #463f50;
 
-    --brand-magenta-50: #3a1029;
+    --text: #f4f1f7;
+    --text-muted: #bdb5c8;
+    --text-subtle: #978fa3;
 
-    --danger: #ff7d95;
-    --danger-bg: #3a1620;
-    --warning: #f0b45c;
-    --warning-bg: #3a2a12;
-    --success: #4fd1aa;
-    --success-bg: #0e2e26;
-    --info: #85b0f5;
-    --info-bg: #14233d;
-    --neutral-data: #9a9ab4;
+    --danger: #ff8198;
+    --danger-bg: #36161f;
+    --danger-line: #5e2433;
+    --warning: #f2b85f;
+    --warning-bg: #33260f;
+    --warning-line: #5a4217;
+    --success: #53d3ab;
+    --success-bg: #0f2c24;
+    --success-line: #1d4d3f;
+    --info: #8ab3f7;
+    --info-bg: #15223a;
+    --info-line: #27406a;
+    --neutral-data: #9c9cb6;
 
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0f0f16;
-  --bg-subtle: #14141d;
-  --surface: #1a1a25;
-  --surface-sunken: #22222f;
-  --border: #2e2e3d;
-  --border-strong: #43435a;
+  --brand-jamuni-50: #2a1726;
+  --brand-magenta-50: #34142a;
+  --brand-magenta-100: #4a1b3a;
+  --brand-ink: #ff86bf;
 
-  --text: #f2f2f7;
-  --text-muted: #adadc2;
-  --text-subtle: #8181a0;
+  --bg: #111014;
+  --bg-subtle: #121015;
+  --surface: #1a171e;
+  --surface-hover: #201c25;
+  --surface-sunken: #231f28;
+  --border: #2f2a36;
+  --border-strong: #463f50;
 
-  --brand-magenta-50: #3a1029;
+  --text: #f4f1f7;
+  --text-muted: #bdb5c8;
+  --text-subtle: #978fa3;
 
-  --danger: #ff7d95;
-  --danger-bg: #3a1620;
-  --warning: #f0b45c;
-  --warning-bg: #3a2a12;
-  --success: #4fd1aa;
-  --success-bg: #0e2e26;
-  --info: #85b0f5;
-  --info-bg: #14233d;
-  --neutral-data: #9a9ab4;
+  --danger: #ff8198;
+  --danger-bg: #36161f;
+  --danger-line: #5e2433;
+  --warning: #f2b85f;
+  --warning-bg: #33260f;
+  --warning-line: #5a4217;
+  --success: #53d3ab;
+  --success-bg: #0f2c24;
+  --success-line: #1d4d3f;
+  --info: #8ab3f7;
+  --info-bg: #15223a;
+  --info-line: #27406a;
+  --neutral-data: #9c9cb6;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
-/* Expose tokens to Tailwind v4 utilities */
 @theme inline {
   --color-bg: var(--bg);
   --color-bg-subtle: var(--bg-subtle);
   --color-surface: var(--surface);
   --color-surface-sunken: var(--surface-sunken);
-  --color-border-token: var(--border);
-  --color-border-strong: var(--border-strong);
-
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-subtle: var(--text-subtle);
-
-  --color-jamuni: var(--brand-jamuni);
-  --color-jamuni-600: var(--brand-jamuni-600);
   --color-magenta: var(--brand-magenta);
-  --color-magenta-50: var(--brand-magenta-50);
-  --color-aam: var(--brand-aam);
-
   --color-danger: var(--danger);
-  --color-danger-bg: var(--danger-bg);
-  --color-warning: var(--warning);
-  --color-warning-bg: var(--warning-bg);
   --color-success: var(--success);
-  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
   --color-info: var(--info);
-  --color-info-bg: var(--info-bg);
-  --color-neutral-data: var(--neutral-data);
-
   --font-sans: var(--font-sans);
-  --font-hindi: var(--font-hindi);
 }
 
+/* Base element styles live in @layer base. Unlayered CSS outranks every
+   Tailwind utility in v4, so a bare `* { border-color }` here would silently
+   defeat every `border-[…]` class in the app (it did, until this was fixed:
+   active tab underlines and tinted card borders never rendered). */
+@layer base {
 * {
   border-color: var(--border);
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -154,33 +188,118 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
+  font-weight: 420;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--brand-magenta-100);
+  color: var(--text);
+}
+}
+
+/* ---- Type scale ----------------------------------------------------------
+   Named roles, not sizes. Prefixed `type-` so tailwind-merge never mistakes
+   them for colour utilities and silently drops one.
+
+   Weight discipline: 420 body, 500 labels and controls, 600 headings,
+   650 for figures a seller is meant to read from arm's length. Nothing
+   heavier. Bold-everywhere is the fastest way to make a screen shout.        */
+
+@layer components {
+.type-display {
+  font-size: 2.75rem; /* 44 */
+  line-height: 1;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.type-figure {
+  font-size: 1.75rem; /* 28 */
+  line-height: 1.1;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.type-h1 {
+  font-size: 1.5rem; /* 24 */
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.type-h2 {
+  font-size: 1.0625rem; /* 17 */
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.type-h3 {
+  font-size: 0.875rem; /* 14 */
+  line-height: 1.4;
+  font-weight: 600;
+}
+.type-body {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.type-small {
+  font-size: 0.8125rem; /* 13 */
+  line-height: 1.55;
+}
+.type-caption {
+  font-size: 0.75rem; /* 12 */
+  line-height: 1.5;
+}
+.type-overline {
+  font-size: 0.6875rem; /* 11 */
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+}
+
+/* Seller-facing flows read at arm's length on a low-end phone: 16px body. */
+@media (max-width: 767px) {
+  .seller-flow .type-body {
+    font-size: 0.9375rem;
+  }
 }
 
 /* Every number in every table and chart aligns on its digits. */
 .tabular,
 table td,
 table th,
-.money {
+.money,
+svg text {
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
 }
 
-/* Hindi gets first-class rendering, not an afterthought. */
+/* Devanagari sits visually smaller than Latin at the same px size, and its
+   matras need taller lines. Nudge it so mixed-script labels read as one voice. */
+@layer components {
 .hi,
 [lang="hi"] {
   font-family: var(--font-hindi);
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+.hi.type-h1,
+.hi.type-display {
+  line-height: 1.3;
+}
 }
 
-/* Visible focus everywhere. */
+/* Visible focus everywhere. No border-radius here: as unlayered CSS it would
+   square off every pill-shaped control the moment it takes keyboard focus.
+   Outlines follow the element's own radius in modern browsers. */
 :focus-visible {
   outline: 2px solid var(--brand-magenta);
   outline-offset: 2px;
-  border-radius: 3px;
 }
 
-/* The only motion is state-change feedback, and it yields to the OS setting. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -206,7 +325,20 @@ table th,
   left: 0;
 }
 
-::selection {
-  background: var(--brand-magenta-50);
-  color: var(--text);
+/* Links inside running text. */
+.link {
+  color: var(--brand-ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--brand-ink) 35%, transparent);
+  text-underline-offset: 3px;
+}
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Slim, quiet scrollbars for horizontally scrolling tab strips and tables. */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }

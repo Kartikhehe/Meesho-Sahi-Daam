@@ -11,6 +11,7 @@ import { ChartFrame } from "@/components/charts/chart-frame";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StageChip } from "@/components/shared/status-chip";
 import { TRIGGER_COPY } from "@/engine/triggers";
+import { RETURN_WRITEDOWN } from "@/engine/constants";
 import type { ListingAnalysis } from "@/lib/selectors";
 import type { World } from "@/engine/types";
 import { formatDateShort, inr, count } from "@/lib/format";
@@ -45,7 +46,7 @@ export function HistoryTab({ analysis, world }: { analysis: ListingAnalysis; wor
     const dayOrders = orders.filter((o) => o.day === d);
     const dayNet = settlements
       .filter((s) => s.dispatchedDay === d)
-      .reduce((a, s) => a + s.netCredit - s.cogs, 0);
+      .reduce((a, s) => a + s.netCredit - (s.outcome === "delivered" ? s.cogs : s.cogs * RETURN_WRITEDOWN), 0);
     days.push({ day: d, orders: dayOrders.length, net: dayNet });
   }
 

@@ -9,6 +9,7 @@ import { useWorldStore } from "@/lib/store/world-store";
 import { worldSummary } from "@/data/generator/world";
 import { count, formatDate, pct } from "@/lib/format";
 import { WORLD_SEED } from "@/engine/constants";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 const STEPS = [1, 7, 30, 90];
 
@@ -45,19 +46,11 @@ export default function SimulationPage() {
   const progress = advancing ? Math.round((advancing.done / advancing.total) * 100) : null;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 md:px-6">
-      <header className="mb-5">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          A5
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Simulation control</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--text-muted)]">
-          The whole world is reproducible from its seed. Advancing the clock generates real orders
-          from the demand model, resolves each to delivered, refused or returned, writes settlement
-          lines credited fifteen days later, drifts rival prices, and re-evaluates every trigger.
-          Nothing here is pre-baked.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Simulation control"
+        description={<>The whole world is reproducible from its seed. Advancing the clock generates real orders from the demand model, resolves each to delivered, refused or returned, writes settlement lines credited fifteen days later, drifts rival prices, and re-evaluates every trigger. Nothing here is pre-baked.</>}
+      />
 
       {status === "error" ? (
         <Card className="mb-4 border-[var(--danger)]/30 bg-[var(--danger-bg)] p-4">
@@ -204,6 +197,6 @@ export default function SimulationPage() {
           </p>
         </Card>
       ) : null}
-    </div>
+    </Page>
   );
 }

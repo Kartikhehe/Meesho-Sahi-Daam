@@ -1,6 +1,7 @@
 import { PARAMS, type ParamKind } from "@/engine/constants";
 import { Card } from "@/components/ui/card";
 import { inr, pct, ratio } from "@/lib/format";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 export const metadata = { title: "Data Provenance — Sahi Daam" };
 
@@ -44,20 +45,11 @@ export default function ProvenancePage() {
   }, {});
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 md:px-6">
-      <header className="mb-5">
-        <div className="flex items-center gap-2">
-          <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-            A6
-          </span>
-        </div>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Data provenance</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--text-muted)]">
-          Every parameter behind every number this product shows a seller, with its source. Where a
-          figure comes from published research, the study is named. Where it is our own modelling
-          choice, it says so — being candid about that distinction is the point of this screen.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Data provenance"
+        description={<>Every parameter behind every number this product shows a seller, with its source. Where a figure comes from published research, the study is named. Where it is our own modelling choice, it says so — being candid about that distinction is the point of this screen.</>}
+      />
 
       <Card className="mb-5 p-4">
         <h2 className="text-sm font-semibold text-[var(--text)]">Why this world is simulated</h2>
@@ -133,6 +125,6 @@ export default function ProvenancePage() {
         This table is rendered directly from <code>engine/constants.ts</code>. There is no separate
         copy of these numbers — what the engine computes with is what you are reading.
       </p>
-    </div>
+    </Page>
   );
 }

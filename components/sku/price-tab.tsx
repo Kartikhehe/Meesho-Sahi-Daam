@@ -1,40 +1,40 @@
 "use client";
 
 /**
- * S3 · Price tab — the Daam Meter as the hero, then the decision.
+ * S3 · Price tab — the Daam Meter, the four numbers behind it, then the
+ * decision.
  *
- * "Accept ₹334" is the primary action, but "Set my own" never disappears: the
- * tool advises, the seller decides. That is both a trust decision and a
+ * "Accept" is the primary action, but "Set my own" never disappears: the tool
+ * advises, the seller decides. That is both a trust decision and a
  * competition-law one.
  */
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import Link from "next/link";
+import { Check } from "lucide-react";
+import { Card, CardHead } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DaamMeter } from "@/components/charts/daam-meter";
 import { MoneyValue } from "@/components/shared/money-value";
-import { BandChip } from "@/components/shared/status-chip";
+import { Amount } from "@/components/shared/amount";
+import { Callout } from "@/components/shared/callout";
+import { StatStrip } from "@/components/shared/stat-strip";
 import { VERDICT_COPY } from "@/engine/band";
 import { contributionPerOrder } from "@/engine/cost";
 import { useWorldStore } from "@/lib/store/world-store";
 import type { ListingAnalysis } from "@/lib/selectors";
-import { inr, count } from "@/lib/format";
-import Link from "next/link";
+import { count, inr } from "@/lib/format";
 
 export function PriceTab({ analysis }: { analysis: ListingAnalysis }) {
   const setPrice = useWorldStore((s) => s.setPrice);
-  const [custom, setCustom] = useState<string>("");
+  const [custom, setCustom] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const [saved, setSaved] = useState<number | null>(null);
 
   const { listing, band, floor, ceiling, contribution, ordersLast30 } = analysis;
   const verdict = band.value.verdict;
-  const copy = VERDICT_COPY[verdict];
   const recommended = band.value.recommended;
-
-  /** What she would earn per parcel at the suggested price. */
-  const atRecommended =
-    recommended > 0 ? contributionPerOrder(recommended, analysis.inputs) : null;
+  const atRecommended = recommended > 0 ? contributionPerOrder(recommended, analysis.inputs) : null;
 
   const apply = (price: number) => {
     setPrice(listing.id, price);
@@ -48,50 +48,31 @@ export function PriceTab({ analysis }: { analysis: ListingAnalysis }) {
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
+      <Card className="p-4 sm:p-5">
         <DaamMeter band={band.value} />
       </Card>
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <BandChip verdict={verdict} />
-          <span className="text-[13px] text-[var(--text-muted)]">{copy.meaning}</span>
-        </div>
-
-        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
-          <div>
-            <dt className="hi text-[12px] text-[var(--text-muted)]">आपका दाम</dt>
-            <dd className="tabular mt-0.5 text-lg font-semibold text-[var(--text)]">
-              {inr(listing.price)}
-            </dd>
-          </div>
-          <div>
-            <dt className="hi text-[12px] text-[var(--text-muted)]">सुरक्षा दाम</dt>
-            <dd className="mt-0.5">
-              <MoneyValue
-                value={floor.value}
-                traced={floor}
-                label={`Survival price — ${listing.name}`}
-                labelHi="सुरक्षा दाम"
-                size="lg"
-              />
-            </dd>
-          </div>
-          <div>
-            <dt className="hi text-[12px] text-[var(--text-muted)]">दिखने की सीमा</dt>
-            <dd className="mt-0.5">
-              <MoneyValue
-                value={ceiling.value}
-                traced={ceiling}
-                label={`Visibility ceiling — ${listing.name}`}
-                labelHi="दिखने की सीमा"
-                size="lg"
-              />
-            </dd>
-          </div>
-          <div>
-            <dt className="hi text-[12px] text-[var(--text-muted)]">हर पार्सल पर</dt>
-            <dd className="mt-0.5">
+      <StatStrip
+        stats={[
+          { labelHi: "आपका दाम", label: "Your price", value: <Amount value={listing.price} size="lg" /> },
+          {
+            labelHi: "सुरक्षा दाम",
+            label: "Survival price",
+            value: (
+              <MoneyValue value={floor.value} traced={floor} label={`Survival price — ${listing.name}`} labelHi="सुरक्षा दाम" size="lg" />
+            ),
+          },
+          {
+            labelHi: "दिखने की सीमा",
+            label: "Visibility ceiling",
+            value: (
+              <MoneyValue value={ceiling.value} traced={ceiling} label={`Visibility ceiling — ${listing.name}`} labelHi="दिखने की सीमा" size="lg" />
+            ),
+          },
+          {
+            labelHi: "हर पार्सल पर",
+            label: "Per parcel shipped",
+            value: (
               <MoneyValue
                 value={contribution.value}
                 traced={contribution}
@@ -100,105 +81,113 @@ export function PriceTab({ analysis }: { analysis: ListingAnalysis }) {
                 size="lg"
                 tone="auto"
               />
-            </dd>
-          </div>
-        </dl>
+            ),
+          },
+        ]}
+      />
+      <p className="type-caption -mt-1 px-1 text-[var(--text-subtle)]">
+        Tap any underlined figure to see exactly how it is worked out.
+      </p>
 
-        {saved !== null ? (
-          <p className="mt-4 rounded-[var(--radius-input)] border border-[var(--success)]/30 bg-[var(--success-bg)] px-3 py-2 text-[13px] text-[var(--text)]">
-            Price set to <strong>{inr(saved)}</strong>. You can change it back at any time.
-          </p>
-        ) : null}
+      {saved !== null ? (
+        <Callout tone="success" title={`Price set to ${inr(saved)}`}>
+          You can change it back at any time. The new price shows up in your next settlement.
+        </Callout>
+      ) : null}
 
-        <div className="mt-4 border-t border-[var(--border)] pt-4">
-          {verdict === "NO_BAND" ? (
-            <div>
-              <p className="text-[13px] leading-relaxed text-[var(--text)]">
-                There is no price that both covers your costs and gets this listing seen. Your
-                survival price is{" "}
-                <strong className="text-[var(--danger)]">
-                  {inr(floor.value - ceiling.value)}
-                </strong>{" "}
-                above the ceiling. The cost has to move before the price can.
-              </p>
-              <Link href={`/unlock?sku=${listing.id}`}>
-                <Button variant="primary" className="mt-3">
-                  Show me what would open a band
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-3">
-              {recommended > 0 && recommended !== listing.price ? (
-                <Button variant="primary" onClick={() => apply(recommended)}>
-                  Accept {inr(recommended)}
-                </Button>
-              ) : null}
-              <Button variant="secondary" onClick={() => setShowCustom((v) => !v)}>
-                Set my own
-              </Button>
-              {atRecommended && recommended !== listing.price ? (
-                <span className="text-[12px] text-[var(--text-muted)]">
-                  We suggest {inr(recommended)} — that would earn you{" "}
-                  <strong className="text-[var(--success)]">
-                    {inr(atRecommended.value)}
+      {verdict === "NO_BAND" ? (
+        <Callout
+          tone="danger"
+          titleHi="कोई सही दाम नहीं"
+          title="No price works for this listing yet"
+          actions={
+            <Link href={`/unlock?sku=${listing.id}`}>
+              <Button variant="primary">Show me what would open a band</Button>
+            </Link>
+          }
+        >
+          Your survival price is <strong>{inr(floor.value - ceiling.value)}</strong> above the ceiling. Any price
+          buyers will see loses you money on every parcel — the cost has to move before the price can.
+        </Callout>
+      ) : (
+        <Card className="p-4 sm:p-5">
+          <CardHead
+            titleHi="क्या करें"
+            title="What we suggest"
+            description={VERDICT_COPY[verdict].meaning}
+          />
+
+          {atRecommended && recommended !== listing.price ? (
+            <p className="type-body mt-4 text-[var(--text)]">
+              At <strong className="font-semibold">{inr(recommended)}</strong> you would earn{" "}
+              <Amount value={atRecommended.value} size="md" tone="auto" decimals={atRecommended.value < 10 ? 2 : 0} /> a
+              parcel, against <Amount value={contribution.value} size="md" tone="auto" /> today
+              {ordersLast30 > 0 ? (
+                <>
+                  {" "}— about{" "}
+                  <strong className="font-semibold">
+                    {inr((atRecommended.value - contribution.value) * ordersLast30)}
                   </strong>{" "}
-                  a parcel, against {inr(contribution.value)} now.
-                </span>
+                  more a month at last month&rsquo;s {count(ordersLast30)} orders
+                </>
               ) : null}
-            </div>
-          )}
+              .
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {recommended > 0 && recommended !== listing.price ? (
+              <Button variant="primary" onClick={() => apply(recommended)}>
+                <Check size={16} aria-hidden />
+                Accept {inr(recommended)}
+              </Button>
+            ) : null}
+            <Button variant="secondary" onClick={() => setShowCustom((v) => !v)} aria-expanded={showCustom}>
+              Set my own price
+            </Button>
+          </div>
 
           {showCustom ? (
-            <div className="mt-3 rounded-[var(--radius-input)] border border-[var(--border)] bg-[var(--surface-sunken)] p-3">
-              <label htmlFor="custom-price" className="text-[12px] font-medium text-[var(--text)]">
+            <div className="mt-4 rounded-[var(--radius-input)] bg-[var(--surface-sunken)] p-3.5">
+              <label htmlFor="custom-price" className="text-[13px] font-medium text-[var(--text)]">
                 Your price
               </label>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <input
-                  id="custom-price"
-                  value={custom}
-                  onChange={(e) => setCustom(e.target.value)}
-                  inputMode="numeric"
-                  placeholder={String(listing.price)}
-                  className="tabular h-11 w-32 rounded-[var(--radius-input)] border border-[var(--border-strong)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
-                />
-                <Button
-                  variant="secondary"
-                  disabled={!customValid}
-                  onClick={() => apply(Math.round(customValue))}
-                >
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <div className="flex h-11 items-center gap-1 rounded-[var(--radius-input)] border border-[var(--border-strong)] bg-[var(--surface)] px-3 focus-within:border-[var(--brand-magenta)]">
+                  <span className="text-[var(--text-subtle)]">₹</span>
+                  <input
+                    id="custom-price"
+                    value={custom}
+                    onChange={(e) => setCustom(e.target.value.replace(/[^0-9]/g, ""))}
+                    inputMode="numeric"
+                    placeholder={String(listing.price)}
+                    className="tabular w-24 bg-transparent text-[15px] font-medium text-[var(--text)] outline-none"
+                  />
+                </div>
+                <Button variant="secondary" disabled={!customValid} onClick={() => apply(Math.round(customValue))}>
                   Set this price
                 </Button>
               </div>
               {customBelowFloor ? (
-                <p className="mt-2 text-[12px] leading-relaxed text-[var(--warning)]">
+                <p className="type-caption mt-2.5 text-[var(--warning)]">
                   That is below your survival price of {inr(floor.value)} — you would lose about{" "}
-                  {inr(Math.abs(contributionPerOrder(customValue, analysis.inputs).value))} on every
-                  parcel. We will still set it if that is what you want.
+                  {inr(Math.abs(contributionPerOrder(customValue, analysis.inputs).value))} on every parcel. We will
+                  still set it if that is what you want.
                 </p>
               ) : null}
             </div>
           ) : null}
-        </div>
-      </Card>
+        </Card>
+      )}
 
-      <Card className="p-4">
-        <h3 className="text-[13px] font-semibold text-[var(--text)]">What this listing did</h3>
-        <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
-          {[
-            ["Orders, last 30 days", count(ordersLast30)],
-            ["Earned, last 30 days", inr(analysis.monthlyContribution)],
-            ["Rating", `${listing.rating.toFixed(1)} ★`],
-            ["In stock", count(listing.inventory)],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-[12px] text-[var(--text-subtle)]">{label}</dt>
-              <dd className="tabular mt-0.5 text-sm font-medium text-[var(--text)]">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
+      <StatStrip
+        stats={[
+          { label: "Orders, last 30 days", value: <span className="type-h2 tabular">{count(ordersLast30)}</span> },
+          { label: "Earned, last 30 days", value: <Amount value={analysis.monthlyContribution} size="lg" tone="auto" /> },
+          { label: "Rating", value: <span className="type-h2 tabular">{listing.rating.toFixed(1)} ★</span> },
+          { label: "In stock", value: <span className="type-h2 tabular">{count(listing.inventory)}</span> },
+        ]}
+      />
     </div>
   );
 }

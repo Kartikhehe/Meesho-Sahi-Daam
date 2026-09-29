@@ -18,6 +18,7 @@ import { useWorld } from "@/lib/use-seller";
 import { useSellerStore } from "@/lib/store/world-store";
 import { count } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 function timeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -47,16 +48,11 @@ export default function AuditPage() {
   }, [auditLog, filter]);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          A7
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Audit log</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Every change to the cost model, and every time someone opened a seller&rsquo;s cost detail
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Audit log"
+        description={<>Every change to the cost model, and every time someone opened a seller&rsquo;s cost detail</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-80 w-full" />}>
         <div className="mb-3 flex flex-wrap gap-2">
@@ -140,6 +136,6 @@ export default function AuditPage() {
           In production this would be an append-only server-side log.
         </p>
       </StateGate>
-    </div>
+    </Page>
   );
 }

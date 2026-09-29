@@ -17,6 +17,7 @@ import { ChartFrame } from "@/components/charts/chart-frame";
 import { useWorld } from "@/lib/use-seller";
 import { bandDistribution, cohortHealth, summariseCohort } from "@/lib/cohort";
 import { inr, inrCompact, count, pct } from "@/lib/format";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 const BAND_COLOUR: Record<string, string> = {
   BELOW_FLOOR: "var(--danger)",
@@ -36,17 +37,11 @@ export default function CohortPage() {
   const maxBand = Math.max(...distribution.map((d) => d.count), 1);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-5 md:px-6">
-      <header className="mb-5">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          M1
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Cohort health</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          How the sellers in your category are actually doing — and how much of it is a pricing
-          problem you can fix
-        </p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        title="Cohort health"
+        description={<>How the sellers in your category are actually doing — and how much of it is a pricing problem you can fix</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         {health.length === 0 ? (
@@ -197,6 +192,6 @@ export default function CohortPage() {
           </>
         )}
       </StateGate>
-    </div>
+    </Page>
   );
 }

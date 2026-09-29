@@ -3,231 +3,225 @@
 /**
  * The Daam Meter — the product's signature component.
  *
- * A horizontal rail from floor×0.85 to ceiling×1.15. Red below the floor,
- * green between floor and ceiling, grey above the ceiling. Markers for floor,
- * ceiling, the current price (filled dot) and the recommended price (ring).
+ * A rail from below the floor to above the ceiling. Red where every parcel
+ * loses money, green where a price both pays and gets seen, grey where buyers
+ * stop finding the listing. The current price sits on the rail as a solid dot
+ * with its own bubble above; the suggestion is a hollow ring.
  *
- * The state that matters most is the INVERTED one: when floor > ceiling there
- * is no price that both covers her costs and gets her seen. The geometry flips
- * into a hatched "no viable price" band and the component stays legible — that
- * state is deliberately designed rather than treated as an error, because
- * naming it honestly is the best idea in this product.
+ * When floor > ceiling there is no price that works. The band inverts into a
+ * hatched gap — deliberately designed, because naming that state honestly is
+ * the best idea in this product.
  *
- * Hand-written SVG, themed from CSS variables, responsive via viewBox.
+ * Drawn at its real pixel width (see useWidth), so labels stay legible on a
+ * 360px phone, and laid out so labels never overprint one another.
  */
 
 import { useId } from "react";
 import { inr } from "@/lib/format";
+import { textWidth, useWidth } from "@/lib/use-width";
+import { layoutLabels } from "./meter-layout";
 import { ChartFrame } from "./chart-frame";
 import type { BandAnalysis } from "@/engine/types";
 
-const W = 720;
-const H = 128;
-const PAD = 28;
-const RAIL_Y = 62;
-const RAIL_H = 14;
+const H = 150;
+const PAD = 14;
+const RAIL_Y = 70;
+const RAIL_H = 12;
+const LABEL_Y = RAIL_Y + RAIL_H + 26;
+const MOVE = "transform 320ms cubic-bezier(.2,.8,.2,1)";
 
-export function DaamMeter({
-  band,
-  /** Animate the price marker when it moves. Respects prefers-reduced-motion. */
-  animate = true,
-}: {
-  band: BandAnalysis;
-  animate?: boolean;
-}) {
+export function DaamMeter({ band, title = true }: { band: BandAnalysis; title?: boolean }) {
   const id = useId();
+  const { ref, width } = useWidth(640);
+  const W = Math.max(280, width);
+
   const { floor, ceiling, price, recommended, verdict } = band;
   const inverted = ceiling <= floor;
+  const hasRec = recommended > 0 && !inverted;
 
-  // The rail spans a window wide enough to hold every marker with breathing
-  // room. In the inverted case floor and ceiling are the wrong way round, so
-  // the window is built from min/max rather than from floor/ceiling directly.
-  const lo = Math.min(floor, ceiling, price, recommended || Infinity);
-  const hi = Math.max(floor, ceiling, price, recommended || 0);
-  const span = Math.max(hi - lo, 1);
-  const min = lo - span * 0.18;
-  const max = hi + span * 0.18;
-
-  const x = (value: number) => PAD + ((value - min) / (max - min)) * (W - PAD * 2);
+  // A window wide enough for every marker, with breathing room either side.
+  const points = [floor, ceiling, price, ...(hasRec ? [recommended] : [])];
+  const lo = Math.min(...points);
+  const hi = Math.max(...points);
+  const span = Math.max(hi - lo, (lo + hi) * 0.06, 1);
+  const min = lo - span * 0.22;
+  const max = hi + span * 0.22;
+  const x = (v: number) => PAD + ((v - min) / (max - min)) * (W - PAD * 2);
 
   const floorX = x(floor);
-  const ceilingX = x(ceiling);
+  const ceilX = x(ceiling);
   const priceX = x(price);
-  const recX = recommended > 0 ? x(recommended) : null;
+  const recX = hasRec ? x(recommended) : 0;
+
+  const lossEnd = inverted ? ceilX : floorX; // loses money AND is seen
+  const bandStart = Math.min(floorX, ceilX);
+  const bandEnd = Math.max(floorX, ceilX);
+
+  const priceTone =
+    verdict === "BELOW_FLOOR" || verdict === "NO_BAND"
+      ? "var(--danger)"
+      : verdict === "ABOVE_GATE"
+        ? "var(--neutral-data)"
+        : "var(--success)";
+
+  // Labels under the rail, laid out so they never collide.
+  const labelDefs = [
+    { key: "floor", x: floorX, value: inr(floor), name: "सुरक्षा दाम", colour: "var(--danger)" },
+    { key: "ceiling", x: ceilX, value: inr(ceiling), name: "दिखने की सीमा", colour: "var(--info)" },
+    ...(hasRec
+      ? [{ key: "rec", x: recX, value: inr(recommended), name: "सुझाया दाम", colour: "var(--success)" }]
+      : []),
+  ];
+  const laid = layoutLabels(
+    labelDefs.map((l) => ({
+      key: l.key,
+      x: l.x,
+      width: Math.max(textWidth(l.value, 13), textWidth(l.name, 11)) + 6,
+    })),
+    PAD,
+    W - PAD,
+  );
+
+  // The price bubble, clamped so it never runs off either edge.
+  const bubbleText = inr(price);
+  const bubbleW = Math.max(textWidth(bubbleText, 14), textWidth("आपका दाम", 10.5)) + 22;
+  const bubbleX = Math.max(PAD + bubbleW / 2, Math.min(W - PAD - bubbleW / 2, priceX));
+
+  const gapText = `${inr(floor - ceiling)} का फ़ासला`;
+  const gapFits = inverted && bandEnd - bandStart > textWidth(gapText, 11) + 12;
+
+  const description = inverted
+    ? `No viable price. The survival price of ${inr(floor)} is ${inr(floor - ceiling)} above the visibility ceiling of ${inr(ceiling)}.`
+    : `Your price of ${inr(price)} against a survival price of ${inr(floor)} and a visibility ceiling of ${inr(ceiling)}.`;
 
   const tableRows = [
     { label: "सुरक्षा दाम · Survival price", value: inr(floor), note: "Below this, every parcel loses money" },
     { label: "दिखने की सीमा · Visibility ceiling", value: inr(ceiling), note: "Above this, buyers stop finding you" },
     { label: "आपका दाम · Your price", value: inr(price) },
-    ...(recommended > 0 ? [{ label: "सुझाया दाम · Suggested price", value: inr(recommended) }] : []),
+    ...(hasRec ? [{ label: "सुझाया दाम · Suggested price", value: inr(recommended) }] : []),
     {
       label: inverted ? "Gap to close" : "Room between floor and ceiling",
       value: inr(Math.abs(ceiling - floor)),
-      note: inverted ? "Your cost must fall by this much before any price works" : undefined,
     },
   ];
 
-  const description = inverted
-    ? `No viable price. Your survival price of ${inr(floor)} is ${inr(floor - ceiling)} above the visibility ceiling of ${inr(ceiling)}.`
-    : `Your price of ${inr(price)} against a survival price of ${inr(floor)} and a visibility ceiling of ${inr(ceiling)}.`;
-
   return (
     <ChartFrame
-      title="Where your price sits"
-      titleHi="आपका दाम कहाँ है"
+      title={title ? "Where your price sits" : ""}
+      titleHi={title ? "आपका दाम कहाँ है" : undefined}
       description={description}
       tableRows={tableRows}
       tableHeaders={["", "₹"]}
+      footer={<Legend inverted={inverted} />}
     >
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        role="img"
-        aria-labelledby={`${id}-t ${id}-d`}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <title id={`${id}-t`}>{inverted ? "No viable price band" : "Your price within its band"}</title>
-        <desc id={`${id}-d`}>{description}</desc>
+      <div ref={ref}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block max-w-full" role="img" aria-labelledby={`${id}-t ${id}-d`}>
+          <title id={`${id}-t`}>{inverted ? "No viable price band" : "Your price within its band"}</title>
+          <desc id={`${id}-d`}>{description}</desc>
 
-        <defs>
-          <pattern id={`${id}-hatch`} width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-            <rect width="8" height="8" fill="var(--danger-bg)" />
-            <line x1="0" y1="0" x2="0" y2="8" stroke="var(--danger)" strokeWidth="2.5" opacity="0.5" />
-          </pattern>
-        </defs>
+          <defs>
+            <pattern id={`${id}-hatch`} width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+              <rect width="7" height="7" fill="var(--danger-bg)" />
+              <line x1="0" y1="0" x2="0" y2="7" stroke="var(--danger)" strokeWidth="2" strokeOpacity="0.55" />
+            </pattern>
+            <clipPath id={`${id}-rail`}>
+              <rect x={PAD} y={RAIL_Y} width={W - PAD * 2} height={RAIL_H} rx={RAIL_H / 2} />
+            </clipPath>
+          </defs>
 
-        {/* The rail: everything below the floor is money-losing. */}
-        <rect
-          x={PAD}
-          y={RAIL_Y}
-          width={Math.max(0, floorX - PAD)}
-          height={RAIL_H}
-          rx="3"
-          fill="var(--danger-bg)"
-        />
+          {/* Zones, clipped to one rounded rail. */}
+          <g clipPath={`url(#${id}-rail)`}>
+            <rect x={PAD} y={RAIL_Y} width={W - PAD * 2} height={RAIL_H} fill="var(--surface-sunken)" />
+            <rect x={PAD} y={RAIL_Y} width={Math.max(0, lossEnd - PAD)} height={RAIL_H} fill="var(--danger-bg)" />
+            {inverted ? (
+              <rect x={bandStart} y={RAIL_Y} width={bandEnd - bandStart} height={RAIL_H} fill={`url(#${id}-hatch)`} />
+            ) : (
+              <rect x={bandStart} y={RAIL_Y} width={bandEnd - bandStart} height={RAIL_H} fill="var(--success-line)" />
+            )}
+          </g>
+          <rect x={PAD} y={RAIL_Y} width={W - PAD * 2} height={RAIL_H} rx={RAIL_H / 2} fill="none" stroke="var(--border)" />
 
-        {inverted ? (
-          // Floor above ceiling: the "band" is a gap, drawn hatched between the
-          // ceiling (where buyers stop looking) and the floor (where she stops
-          // losing money). Nothing can live in here.
-          <rect
-            x={ceilingX}
-            y={RAIL_Y}
-            width={Math.max(0, floorX - ceilingX)}
-            height={RAIL_H}
-            fill={`url(#${id}-hatch)`}
-            stroke="var(--danger)"
-            strokeWidth="1"
-            strokeDasharray="3 2"
-          />
-        ) : (
-          <rect
-            x={floorX}
-            y={RAIL_Y}
-            width={Math.max(0, ceilingX - floorX)}
-            height={RAIL_H}
-            rx="3"
-            fill="var(--success-bg)"
-            stroke="var(--success)"
-            strokeOpacity="0.3"
-          />
-        )}
+          {gapFits ? (
+            <text x={(bandStart + bandEnd) / 2} y={RAIL_Y - 8} textAnchor="middle" fill="var(--danger)" fontSize="11" fontWeight="600">
+              {gapText}
+            </text>
+          ) : null}
 
-        {/* Above the ceiling: safe for her, but invisible to buyers. */}
-        <rect
-          x={Math.max(ceilingX, inverted ? floorX : ceilingX)}
-          y={RAIL_Y}
-          width={Math.max(0, W - PAD - Math.max(ceilingX, inverted ? floorX : ceilingX))}
-          height={RAIL_H}
-          rx="3"
-          fill="var(--surface-sunken)"
-        />
+          {/* Floor and ceiling ticks */}
+          <line x1={floorX} x2={floorX} y1={RAIL_Y - 5} y2={RAIL_Y + RAIL_H + 5} stroke="var(--danger)" strokeWidth="2" strokeLinecap="round" />
+          <line x1={ceilX} x2={ceilX} y1={RAIL_Y - 5} y2={RAIL_Y + RAIL_H + 5} stroke="var(--info)" strokeWidth="2" strokeLinecap="round" />
 
-        {/* Floor marker */}
-        <line x1={floorX} y1={RAIL_Y - 12} x2={floorX} y2={RAIL_Y + RAIL_H + 8} stroke="var(--danger)" strokeWidth="2" />
-        <text x={floorX} y={RAIL_Y - 18} textAnchor="middle" className="tabular" fill="var(--danger)" fontSize="12" fontWeight="600">
-          {inr(floor)}
-        </text>
-        <text x={floorX} y={RAIL_Y + RAIL_H + 22} textAnchor="middle" fill="var(--text-muted)" fontSize="10">
-          सुरक्षा दाम
-        </text>
-
-        {/* Ceiling marker */}
-        <line x1={ceilingX} y1={RAIL_Y - 12} x2={ceilingX} y2={RAIL_Y + RAIL_H + 8} stroke="var(--info)" strokeWidth="2" />
-        <text x={ceilingX} y={RAIL_Y - 18} textAnchor="middle" className="tabular" fill="var(--info)" fontSize="12" fontWeight="600">
-          {inr(ceiling)}
-        </text>
-        <text x={ceilingX} y={RAIL_Y + RAIL_H + 22} textAnchor="middle" fill="var(--text-muted)" fontSize="10">
-          दिखने की सीमा
-        </text>
-
-        {/* Recommended price: a hollow ring, so it reads as a suggestion. */}
-        {recX !== null ? (
-          <g>
+          {/* Suggested price: a ring, so it reads as a suggestion rather than a fact. */}
+          {hasRec ? (
             <circle cx={recX} cy={RAIL_Y + RAIL_H / 2} r="7" fill="var(--surface)" stroke="var(--success)" strokeWidth="2.5" />
-            <text x={recX} y={RAIL_Y + RAIL_H + 36} textAnchor="middle" className="tabular" fill="var(--success)" fontSize="10">
-              suggested {inr(recommended)}
+          ) : null}
+
+          {/* The price: bubble above, solid dot on the rail. */}
+          {/* Positioned by CSS transform, not by x attributes, so a price
+              change glides rather than jumps. Reduced motion turns it off. */}
+          <g style={{ transform: `translateX(${bubbleX}px)`, transition: MOVE }}>
+            <rect x={-bubbleW / 2} y={6} width={bubbleW} height={40} rx="8" fill="var(--text)" />
+            <text x={0} y={21} textAnchor="middle" fill="var(--surface)" fontSize="10.5" fontWeight="500" opacity="0.72">
+              आपका दाम
+            </text>
+            <text x={0} y={38} textAnchor="middle" fill="var(--surface)" fontSize="14" fontWeight="650">
+              {bubbleText}
             </text>
           </g>
-        ) : null}
+          <g style={{ transform: `translateX(${priceX}px)`, transition: MOVE }}>
+            <line x1={0} x2={0} y1={46} y2={RAIL_Y - 2} stroke={priceTone} strokeWidth="1.5" strokeDasharray="2 2" />
+            <circle cx={0} cy={RAIL_Y + RAIL_H / 2} r="8" fill={priceTone} stroke="var(--surface)" strokeWidth="3" />
+          </g>
 
-        {/* Current price: the largest, most solid mark on the rail. */}
-        <g
-          style={
-            animate
-              ? { transition: "transform 320ms ease", transform: "translateZ(0)" }
-              : undefined
-          }
-        >
-          <circle
-            cx={priceX}
-            cy={RAIL_Y + RAIL_H / 2}
-            r="9"
-            fill={
-              verdict === "BELOW_FLOOR" || verdict === "NO_BAND"
-                ? "var(--danger)"
-                : verdict === "ABOVE_GATE"
-                  ? "var(--neutral-data)"
-                  : "var(--success)"
-            }
-            stroke="var(--surface)"
-            strokeWidth="2.5"
-          />
-          <text
-            x={priceX}
-            y={RAIL_Y - 34}
-            textAnchor="middle"
-            className="tabular"
-            fill="var(--text)"
-            fontSize="14"
-            fontWeight="700"
-          >
-            {inr(price)}
-          </text>
-        </g>
-
-        {/* In the inverted case, name the gap on the chart itself. */}
-        {inverted ? (
-          <text
-            x={(ceilingX + floorX) / 2}
-            y={RAIL_Y + RAIL_H / 2 + 4}
-            textAnchor="middle"
-            fill="var(--danger)"
-            fontSize="11"
-            fontWeight="600"
-          >
-            {inr(floor - ceiling)} gap
-          </text>
-        ) : null}
-      </svg>
-
-      {inverted ? (
-        <p className="mt-1 rounded-[var(--radius-input)] border border-[var(--danger)]/25 bg-[var(--danger-bg)] px-3 py-2 text-[12px] leading-relaxed text-[var(--text)]">
-          <span className="hi font-semibold">कोई सही दाम नहीं।</span> Your cost to serve sits{" "}
-          <strong>{inr(floor - ceiling)}</strong> above what buyers will pay to find you. No price
-          works here — the cost has to move first, not the price.
-        </p>
-      ) : null}
+          {/* Labels under the rail, with leader lines where they had to move. */}
+          {laid.map((l) => {
+            const def = labelDefs.find((d) => d.key === l.key);
+            if (!def) return null;
+            return (
+              <g key={l.key}>
+                {l.displaced ? (
+                  <path
+                    d={`M${def.x},${RAIL_Y + RAIL_H + 6} L${l.cx},${LABEL_Y - 14}`}
+                    stroke="var(--border-strong)"
+                    strokeWidth="1"
+                    fill="none"
+                  />
+                ) : null}
+                <text x={l.cx} y={LABEL_Y} textAnchor="middle" fill={def.colour} fontSize="13" fontWeight="650">
+                  {def.value}
+                </text>
+                <text x={l.cx} y={LABEL_Y + 16} textAnchor="middle" fill="var(--text-muted)" fontSize="11" fontWeight="500">
+                  {def.name}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
     </ChartFrame>
+  );
+}
+
+function Legend({ inverted }: { inverted: boolean }) {
+  const items = [
+    { swatch: "bg-[var(--danger-bg)] border-[var(--danger-line)]", label: "Loses money" },
+    inverted
+      ? {
+          swatch:
+            "border-[var(--danger-line)] bg-[repeating-linear-gradient(45deg,var(--danger-bg)_0_3px,var(--danger-line)_3px_5px)]",
+          label: "No price works",
+        }
+      : { swatch: "bg-[var(--success-line)] border-[var(--success-line)]", label: "Pays and gets seen" },
+    { swatch: "bg-[var(--surface-sunken)] border-[var(--border)]", label: "Buyers stop finding you" },
+  ];
+  return (
+    <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
+      {items.map((i) => (
+        <li key={i.label} className="flex items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
+          <span aria-hidden className={`h-2.5 w-4 rounded-full border ${i.swatch}`} />
+          {i.label}
+        </li>
+      ))}
+    </ul>
   );
 }

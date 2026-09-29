@@ -17,6 +17,8 @@
 
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { Amount } from "@/components/shared/amount";
+import { VerdictShell, GapEquation } from "./verdict-shell";
 import { Button } from "@/components/ui/button";
 import { DaamMeter } from "@/components/charts/daam-meter";
 import { MoneyValue } from "@/components/shared/money-value";
@@ -125,33 +127,28 @@ export function VerdictCard({
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
+      <Card className="p-4 sm:p-5">
         <DaamMeter band={band} />
       </Card>
 
       {verdict === "LIST" ? (
-        <Card className="border-l-[3px] border-l-[var(--success)] p-5">
-          <p className="hi text-lg font-semibold text-[var(--success)]">यह सामान डाल सकते हैं</p>
-          <p className="text-[13px] font-medium text-[var(--text-muted)]">
-            You can list this — there is real room between your costs and the ceiling
-          </p>
-
-          <p className="mt-3 text-[14px] leading-relaxed text-[var(--text)]">
+        <VerdictShell tone="success" verdictHi="यह सामान डाल सकते हैं" verdict="You can list this — there is real room to work with">
+          <p className="type-body text-[var(--text)]">
             Any price between{" "}
-            <MoneyValue
-              value={floor.value}
-              traced={floor}
-              label="Your survival price"
-              labelHi="सुरक्षा दाम"
-              size="md"
-              className="font-semibold"
-            />{" "}
-            and <strong>{inr(ceiling)}</strong> covers what it costs you to ship and still gets you
-            found. We suggest <strong>{inr(band.recommended)}</strong> — low enough to be seen while
-            you have no reviews yet, high enough that a small cost change will not sink it.
+            <MoneyValue value={floor.value} traced={floor} label="Your survival price" labelHi="सुरक्षा दाम" size="md" />{" "}
+            and <strong className="font-semibold">{inr(ceiling)}</strong> covers what it costs you to ship and still
+            gets you found.
           </p>
-
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-4 rounded-[var(--radius-input)] bg-[var(--surface-sunken)] px-4 py-3">
+            <div>
+              <p className="hi text-[12.5px] font-medium text-[var(--text-muted)]">सुझाया दाम · Launch at</p>
+              <Amount value={band.recommended} size="figure" />
+            </div>
+            <p className="type-caption min-w-[12rem] flex-1 text-[var(--text-muted)]">
+              Low enough to be seen while you have no reviews yet; high enough that a small cost change will not sink it.
+            </p>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
             <Button variant="primary" onClick={() => onList(band.recommended)}>
               List at {inr(band.recommended)}
             </Button>
@@ -159,64 +156,47 @@ export function VerdictCard({
               Change my numbers
             </Button>
           </div>
-        </Card>
+        </VerdictShell>
       ) : null}
 
       {verdict === "DIFFERENTIATE" ? (
-        <Card className="border-l-[3px] border-l-[var(--warning)] p-5">
-          <p className="hi text-lg font-semibold text-[var(--warning)]">
-            दाम से नहीं जीत पाएँगे
+        <VerdictShell tone="warning" verdictHi="सिर्फ़ दाम से नहीं जीत पाएँगे" verdict="Price alone will not win this one">
+          <p className="type-body text-[var(--text)]">
+            There is a band, but it is only <strong className="font-semibold">{inr(band.widthRupees)}</strong> wide —
+            about {pct(band.widthPct, 0)} of the price. One rival dropping {inr(Math.ceil(band.widthRupees))} closes it,
+            and a single freight change wipes it out.
           </p>
-          <p className="text-[13px] font-medium text-[var(--text-muted)]">
-            Price alone will not win this one
-          </p>
-
-          <p className="mt-3 text-[14px] leading-relaxed text-[var(--text)]">
-            There is a band, but it is only <strong>{inr(band.widthRupees)}</strong> wide — about{" "}
-            {pct(band.widthPct, 0)} of the price. That is not enough room to compete on price: one
-            rival dropping {inr(Math.ceil(band.widthRupees))} closes it entirely, and a single
-            freight change wipes it out.
-          </p>
-
-          <div className="mt-3 rounded-[var(--radius-input)] bg-[var(--surface-sunken)] p-3">
-            <p className="text-[12px] font-semibold text-[var(--text)]">What would change this</p>
-            <ul className="mt-1.5 space-y-1 text-[12px] leading-relaxed text-[var(--text-muted)]">
-              <li>
-                · Something buyers can see in the photo — a better fabric, a fuller flare, a
-                genuinely different print. That moves you out of this cluster.
+          <p className="type-overline mt-5 text-[var(--text-subtle)]">What would change this</p>
+          <ul className="mt-2 space-y-2">
+            {[
+              ["Make it look different", "A better fabric, a fuller flare, a genuinely different print — something buyers can see in the photo. That moves you out of this crowd."],
+              ["Bring the cost down", "Lower cost widens the band from below. The cost simulator shows by how much."],
+              ["Sell it as a set", "A bundle is not directly comparable to a single piece, so it escapes the price grid."],
+            ].map(([t, d]) => (
+              <li key={t} className="flex gap-3">
+                <span aria-hidden className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]" />
+                <p className="type-small text-[var(--text-muted)]">
+                  <strong className="font-semibold text-[var(--text)]">{t}.</strong> {d}
+                </p>
               </li>
-              <li>
-                · Lower cost, which widens the band from below. Try the cost simulator.
-              </li>
-              <li>
-                · A bundle or a set, which is not directly comparable to a single piece.
-              </li>
-            </ul>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="primary" onClick={() => onList(band.recommended)}>
+            ))}
+          </ul>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link href="/unlock">
+              <Button variant="primary">Try the cost simulator</Button>
+            </Link>
+            <Button variant="secondary" onClick={() => onList(band.recommended)}>
               List anyway at {inr(band.recommended)}
             </Button>
-            <Link href="/unlock">
-              <Button variant="secondary">Try the cost simulator</Button>
-            </Link>
             <Button variant="ghost" onClick={onBack}>
               Change my numbers
             </Button>
           </div>
-        </Card>
+        </VerdictShell>
       ) : null}
 
       {verdict === "DONT_LIST" ? (
-        <DontListCard
-          floor={floor}
-          inputs={inputs}
-          ceiling={ceiling}
-          codShare={codShare}
-          onBack={onBack}
-          onList={onList}
-        />
+        <DontListCard floor={floor} inputs={inputs} ceiling={ceiling} codShare={codShare} onBack={onBack} onList={onList} />
       ) : null}
     </div>
   );
@@ -241,58 +221,51 @@ function DontListCard({
   const lever = leverToClose(inputs, ceiling, codShare);
 
   return (
-    <Card className="border-l-[3px] border-l-[var(--danger)] p-5">
-      <p className="hi text-lg font-semibold text-[var(--danger)]">अभी यह सामान मत डालें</p>
-      <p className="text-[13px] font-medium text-[var(--text-muted)]">
-        Don&rsquo;t list this one yet — and here is exactly why
+    <VerdictShell tone="danger" verdictHi="अभी यह सामान मत डालें" verdict="Don't list this one yet — here is exactly why">
+      <GapEquation
+        items={[
+          {
+            labelHi: "आपकी लागत",
+            label: "What it costs you to break even",
+            value: <MoneyValue value={floor.value} traced={floor} label="What this listing costs you to serve" labelHi="सुरक्षा दाम" size="lg" />,
+          },
+          { labelHi: "ग्राहक यहाँ तक देखते हैं", label: "Where buyers stop looking", value: <Amount value={ceiling} size="lg" /> },
+          { labelHi: "फ़ासला", label: "The gap", value: <Amount value={gap} size="lg" tone="danger" /> },
+        ]}
+      />
+
+      <p className="type-body mt-4 text-[var(--text)]">
+        This is not a pricing problem, so no price fixes it. List at a price buyers will see and you lose about{" "}
+        <strong className="font-semibold text-[var(--danger)]">{inr(gap)}</strong> on every parcel. List at a price
+        that pays, and almost nobody sees it.
       </p>
 
-      <p className="mt-3 text-[14px] leading-relaxed text-[var(--text)]">
-        It costs you{" "}
-        <MoneyValue
-          value={floor.value}
-          traced={floor}
-          label="What this listing costs you to serve"
-          labelHi="सुरक्षा दाम"
-          size="md"
-          className="font-semibold"
-        />{" "}
-        to ship one of these and break even. But buyers stop finding listings in this design above{" "}
-        <strong>{inr(ceiling)}</strong>. There is no price in between — the gap is{" "}
-        <strong className="text-[var(--danger)]">{inr(gap)}</strong>.
-      </p>
+      <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--border)] p-4">
+        <p className="type-overline text-[var(--text-subtle)]">What would have to change</p>
+        {lever ? (
+          <>
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="hi text-[15px] font-semibold text-[var(--text)]">{lever.leverHi}</p>
+                <p className="type-caption text-[var(--text-muted)]">{lever.lever}</p>
+              </div>
+              <p className="tabular flex items-baseline gap-2 text-[20px] font-semibold">
+                <span className="text-[var(--text-muted)] line-through decoration-[1.5px]">{lever.from}</span>
+                <span aria-hidden className="text-[var(--text-subtle)]">→</span>
+                <span className="text-[var(--success)]">{lever.to}</span>
+              </p>
+            </div>
+            <p className="type-small mt-2 text-[var(--text-muted)]">{lever.detail}</p>
+          </>
+        ) : (
+          <p className="type-small mt-2 text-[var(--text-muted)]">
+            No single change closes a gap this wide on its own — it would take several at once. The cost simulator lets
+            you move all four together and see what it would take.
+          </p>
+        )}
+      </div>
 
-      <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-muted)]">
-        This is not a pricing problem, so no price fixes it. If you list at a price that gets seen,
-        you lose about {inr(gap)} on every parcel. If you list at a price that pays, almost nobody
-        sees it.
-      </p>
-
-      {lever ? (
-        <div className="mt-4 rounded-[var(--radius-input)] border border-[var(--border)] bg-[var(--surface-sunken)] p-3.5">
-          <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--text-subtle)]">
-            What would have to change
-          </p>
-          <p className="hi mt-1.5 text-[14px] font-semibold text-[var(--text)]">{lever.leverHi}</p>
-          <p className="text-[12px] text-[var(--text-muted)]">{lever.lever}</p>
-          <p className="tabular mt-2 text-[15px] font-semibold text-[var(--text)]">
-            {lever.from} <span className="text-[var(--text-subtle)]">→</span>{" "}
-            <span className="text-[var(--success)]">{lever.to}</span>
-          </p>
-          <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--text-muted)]">
-            {lever.detail}
-          </p>
-        </div>
-      ) : (
-        <div className="mt-4 rounded-[var(--radius-input)] border border-[var(--border)] bg-[var(--surface-sunken)] p-3.5">
-          <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">
-            No single change closes this gap on its own — it would take a combination. The cost
-            simulator lets you move all four together and see what it would take.
-          </p>
-        </div>
-      )}
-
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap gap-2">
         <Link href="/unlock">
           <Button variant="primary">Show me what would open a band</Button>
         </Link>
@@ -301,17 +274,13 @@ function DontListCard({
         </Button>
       </div>
 
-      <p className="mt-3 border-t border-[var(--border)] pt-3 text-[12px] leading-relaxed text-[var(--text-subtle)]">
-        We will not stop you listing it. If you want to go ahead anyway,{" "}
-        <button
-          type="button"
-          onClick={() => onList(Math.round(ceiling))}
-          className="font-medium text-[var(--brand-magenta)] hover:underline"
-        >
+      <p className="type-caption mt-4 border-t border-[var(--border)] pt-3 text-[var(--text-subtle)]">
+        We will not stop you. If you want to go ahead anyway,{" "}
+        <button type="button" onClick={() => onList(Math.round(ceiling))} className="link">
           list at {inr(Math.round(ceiling))}
         </button>{" "}
         — just go in knowing what each parcel will cost you.
       </p>
-    </Card>
+    </VerdictShell>
   );
 }

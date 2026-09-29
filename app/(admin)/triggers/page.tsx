@@ -21,6 +21,7 @@ import { TRIGGER_COPY } from "@/engine/triggers";
 import { ALERT_CAP_PER_WEEK } from "@/engine/constants";
 import { inr, count, pct } from "@/lib/format";
 import type { TriggerId } from "@/engine/types";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 export default function TriggersPage() {
   const { world, status, error } = useWorld();
@@ -76,16 +77,11 @@ export default function TriggersPage() {
   const maxHist = stats ? Math.max(...stats.histogram.map((h) => h.sellerWeeks), 1) : 1;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          A2
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Trigger thresholds</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          What fires, what actually reaches a seller, and what the weekly cap holds back
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Trigger thresholds"
+        description={<>What fires, what actually reaches a seller, and what the weekly cap holds back</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         {stats ? (
@@ -205,6 +201,6 @@ export default function TriggersPage() {
           </>
         ) : null}
       </StateGate>
-    </div>
+    </Page>
   );
 }

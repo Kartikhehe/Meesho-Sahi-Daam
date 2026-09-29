@@ -16,6 +16,8 @@ export type NavItem = {
   capability: Capability;
   /** One line describing what lives here. Used by ComingSoon placeholders. */
   blurb: string;
+  /** Which sidebar section the item belongs to. */
+  group: string;
 };
 
 export type NavSection = {
@@ -28,6 +30,7 @@ export const SELLER_NAV: NavItem[] = [
   {
     code: "S1",
     href: "/home",
+    group: "today",
     label: "Home",
     labelHi: "आज का हिसाब",
     icon: "Home",
@@ -37,6 +40,7 @@ export const SELLER_NAV: NavItem[] = [
   {
     code: "S2",
     href: "/catalogue",
+    group: "pricing",
     label: "My Catalogue",
     labelHi: "मेरा सामान",
     icon: "Package",
@@ -46,6 +50,7 @@ export const SELLER_NAV: NavItem[] = [
   {
     code: "S4",
     href: "/new-listing",
+    group: "pricing",
     label: "New Listing",
     labelHi: "नया सामान",
     icon: "PlusCircle",
@@ -55,6 +60,7 @@ export const SELLER_NAV: NavItem[] = [
   {
     code: "S5",
     href: "/unlock",
+    group: "pricing",
     label: "Cost Unlock",
     labelHi: "लागत कम करें",
     icon: "Sliders",
@@ -64,6 +70,7 @@ export const SELLER_NAV: NavItem[] = [
   {
     code: "S6",
     href: "/alerts",
+    group: "today",
     label: "Alerts",
     labelHi: "सूचनाएँ",
     icon: "Bell",
@@ -73,6 +80,7 @@ export const SELLER_NAV: NavItem[] = [
   {
     code: "S7",
     href: "/settlements",
+    group: "money",
     label: "Settlements",
     labelHi: "पैसा मिला",
     icon: "ReceiptText",
@@ -82,6 +90,7 @@ export const SELLER_NAV: NavItem[] = [
   {
     code: "S8",
     href: "/learn",
+    group: "help",
     label: "Learn",
     labelHi: "सीखें",
     icon: "BookOpen",
@@ -94,6 +103,7 @@ export const MANAGER_NAV: NavItem[] = [
   {
     code: "M1",
     href: "/cohort",
+    group: "cohort",
     label: "Cohort Health",
     icon: "Activity",
     capability: "manager.cohort",
@@ -102,6 +112,7 @@ export const MANAGER_NAV: NavItem[] = [
   {
     code: "M2",
     href: "/sellers",
+    group: "cohort",
     label: "Sellers",
     icon: "Users",
     capability: "manager.sellerList",
@@ -110,6 +121,7 @@ export const MANAGER_NAV: NavItem[] = [
   {
     code: "M3",
     href: "/clusters",
+    group: "market",
     label: "Cluster Health",
     icon: "LayoutGrid",
     capability: "manager.clusterHealth",
@@ -118,6 +130,7 @@ export const MANAGER_NAV: NavItem[] = [
   {
     code: "M4",
     href: "/experiment",
+    group: "evidence",
     label: "Experiment",
     icon: "FlaskConical",
     capability: "manager.experiment",
@@ -126,6 +139,7 @@ export const MANAGER_NAV: NavItem[] = [
   {
     code: "M5",
     href: "/queue",
+    group: "cohort",
     label: "Intervention Queue",
     icon: "PhoneCall",
     capability: "manager.interventionQueue",
@@ -137,6 +151,7 @@ export const ADMIN_NAV: NavItem[] = [
   {
     code: "A1",
     href: "/engine-config",
+    group: "engine",
     label: "Engine Config",
     icon: "SlidersHorizontal",
     capability: "admin.engineConfig",
@@ -145,6 +160,7 @@ export const ADMIN_NAV: NavItem[] = [
   {
     code: "A2",
     href: "/triggers",
+    group: "engine",
     label: "Triggers",
     icon: "Zap",
     capability: "admin.triggerThresholds",
@@ -153,6 +169,7 @@ export const ADMIN_NAV: NavItem[] = [
   {
     code: "A3",
     href: "/guardrails",
+    group: "engine",
     label: "Guardrails",
     icon: "ShieldCheck",
     capability: "admin.guardrails",
@@ -161,6 +178,7 @@ export const ADMIN_NAV: NavItem[] = [
   {
     code: "A4",
     href: "/rollout",
+    group: "reach",
     label: "Rollout",
     icon: "Map",
     capability: "admin.rollout",
@@ -169,6 +187,7 @@ export const ADMIN_NAV: NavItem[] = [
   {
     code: "A5",
     href: "/simulation",
+    group: "data",
     label: "Simulation",
     icon: "Clock",
     capability: "admin.simulation",
@@ -177,6 +196,7 @@ export const ADMIN_NAV: NavItem[] = [
   {
     code: "A6",
     href: "/provenance",
+    group: "data",
     label: "Data Provenance",
     icon: "FileSearch",
     capability: "admin.provenance",
@@ -185,6 +205,7 @@ export const ADMIN_NAV: NavItem[] = [
   {
     code: "A7",
     href: "/audit",
+    group: "data",
     label: "Audit Log",
     icon: "ScrollText",
     capability: "admin.auditLog",
@@ -192,16 +213,42 @@ export const ADMIN_NAV: NavItem[] = [
   },
 ];
 
+/**
+ * Sidebar sections, in display order. Seller sections lead in Hindi, because
+ * the seller screens do; manager and admin sections are English.
+ */
+export const NAV_GROUPS: Record<Role, { key: string; label: string; labelHi?: string }[]> = {
+  seller: [
+    { key: "today", label: "Today", labelHi: "आज" },
+    { key: "pricing", label: "Pricing", labelHi: "दाम" },
+    { key: "money", label: "Money", labelHi: "पैसा" },
+    { key: "help", label: "Help", labelHi: "मदद" },
+  ],
+  manager: [
+    { key: "cohort", label: "Sellers" },
+    { key: "market", label: "Market" },
+    { key: "evidence", label: "Evidence" },
+  ],
+  admin: [
+    { key: "engine", label: "Engine" },
+    { key: "reach", label: "Reach" },
+    { key: "data", label: "Data" },
+  ],
+};
+
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   seller: SELLER_NAV,
   manager: MANAGER_NAV,
   admin: ADMIN_NAV,
 };
 
-/** Seller screens that matter most on a 360px phone get a bottom tab. */
-export const MOBILE_TABS: NavItem[] = SELLER_NAV.filter((i) =>
-  ["/home", "/catalogue", "/alerts", "/settlements"].includes(i.href),
-);
+/**
+ * Seller screens that matter most on a 360px phone get a bottom tab. Everything
+ * else is one tap away under "More", so no screen is unreachable on a phone.
+ */
+export const MOBILE_TABS: NavItem[] = ["/home", "/catalogue", "/alerts", "/settlements"]
+  .map((href) => SELLER_NAV.find((i) => i.href === href))
+  .filter((i): i is NavItem => !!i);
 
 export function findNavItem(href: string): NavItem | undefined {
   return [...SELLER_NAV, ...MANAGER_NAV, ...ADMIN_NAV].find((i) => i.href === href);

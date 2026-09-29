@@ -2,7 +2,7 @@
 
 **This file is the resume point.** If the session ends, read this file alone to pick up correctly.
 
-Last updated: Phase 9 complete and committed; design pass in progress.
+Last updated: design pass committed. Phase 10 remainder: Lighthouse run, README screenshots.
 
 ---
 
@@ -104,6 +104,11 @@ Spotify 3.8 GB, pip 1.2 GB) but those are the user's to delete.
 | Phase 3 | Per-order history trimmed to 120 days, with full-history daily rollups kept | No screen looks back further than 120 days for individual orders; the long-run trend charts read the rollups, which are computed before trimming so they lose no fidelity. |
 | Phase 3 | The world is not persisted to `localStorage` | It is ~8 MB against a ~5 MB quota, and is reproducible from its seed anyway. What *is* persisted is what the seed cannot reproduce: price overrides, acknowledged alerts, and the audit log. |
 | Phase 7 | The new-listing ceiling comes from the cluster the twins *concentrate* in, weighted by similarity | Taking the first twin's cluster handed back a ceiling from whichever corner of the category happened to sort first. Kurti ceilings span ₹197-₹376, so that made honest listings look unviable. |
+| Design | Plus Jakarta Sans + Noto Sans Devanagari, self-hosted via @fontsource | Close in spirit to Meesho's proprietary Mier; real `tnum`; ₹ lives in the latin-ext subset, so all subsets load (unicode-range keeps it cheap). Still works offline. |
+| Design | Primary fill #D11D80, not #F43397 | White on the signature pink is 3.6:1 and fails AA; the deeper tone is 4.9:1. #F43397 kept for focus rings and accents. Subtle text darkened to pass 4.5:1 too. |
+| Design | Base CSS moved into `@layer base` / `@layer components` | Unlayered `* { border-color }` outranked every Tailwind utility in v4, so every `border-[…]` class (active tab underline, tinted borders) had silently never rendered. |
+| Design | Charts draw at their measured pixel width (`lib/use-width.ts`) | A fixed 720-unit viewBox shrank 11px labels to ~5px on a phone. The waterfall and funnel are now HTML rows; the Daam Meter lays labels out to avoid overprinting (`₹427₹429`). |
+| Design | Home "earned" figure now comes from the settlement ledger | It came from the pricing model while the trend beside it came from the ledger, so one screen showed −₹68k and −₹83k for the same 30 days. Also fixed: the funnel showed a fabricated 50/50 cost split, and failed parcels were charged full cost of goods instead of the 15% write-down. |
 | Phase 9 | SKU tab follows `hashchange`, and the story rail nudges it | The tab was read from the hash only on mount, so a story step deep-linking `#market` onto an already-open SKU page stayed on Price. `router.push` does not fire `hashchange` for hash-only moves, so the rail dispatches it. |
 | Phase 8 | The manager drill-in audits on the RESOLVED seller, not on the id | Deep-linking `?focus=` set the id before the world finished loading, so the audit effect saw `null` and silently dropped the entry — an audit log that misses the event it exists to record. Now keyed on the resolved seller with a ref guard, and `useAudit` is wrapped in `useCallback` so it is stable across renders. |
 | Phase 7 | `leverToClose` is bounded to moves a seller could actually make | Unbounded, it reported "cut your cost of goods by 94%" — arithmetically true, useless as advice, and worse, it dressed an impossible gap up as an actionable one. Bounds: 35% off COGS, 12 points off returns, COD share down to 25%. If nothing inside those closes the gap, it says so. |

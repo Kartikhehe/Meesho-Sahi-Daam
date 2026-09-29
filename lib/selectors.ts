@@ -13,6 +13,8 @@ import { costInputsFor } from "@/engine/clock";
 import { contributionPerOrder, survivalPrice, type CostInputs } from "@/engine/cost";
 import { visibilityGate } from "@/engine/demand";
 import { daamScore } from "@/engine/score";
+import { RETURN_WRITEDOWN } from "@/engine/constants";
+import type { Funnel } from "@/engine/waterfall";
 import type { Traced } from "@/engine/trace";
 import type {
   BandAnalysis,
@@ -206,11 +208,41 @@ export function contributionTrend(
   const settlements = settlementsFor(world, sellerId, days);
   const byDay = new Map<number, number>();
   for (const s of settlements) {
-    byDay.set(s.dispatchedDay, (byDay.get(s.dispatchedDay) ?? 0) + s.netCredit - s.cogs);
+    // Goods on a delivered parcel are gone; goods on a refused or returned one
+    // come back and lose only the write-down. Charging the full cost of goods
+    // on every failed parcel would overstate her losses.
+    const goods = s.outcome === "delivered" ? s.cogs : s.cogs * RETURN_WRITEDOWN;
+    byDay.set(s.dispatchedDay, (byDay.get(s.dispatchedDay) ?? 0) + s.netCredit - goods);
   }
   const out: { day: number; value: number }[] = [];
   for (let d = world.day - days + 1; d <= world.day; d++) {
     out.push({ day: d, value: byDay.get(d) ?? 0 });
   }
   return out;
+}
+
+/**
+ * The funnel from a seller's actual settlement lines.
+ *
+ * A failed parcel's cost is what its settlement line took from her (freight,
+ * GST, packing, ads) plus the write-down on the goods that came back — the
+ * settlement line itself does not carry the goods.
+ */
+export function funnelFromLedger(settlements: SettlementLine[]): Funnel {
+  const lossOn = (outcome: "rto" | "returned") =>
+    settlements
+      .filter((s) => s.outcome === outcome)
+      .reduce((acc, s) => acc + -s.netCredit + s.cogs * RETURN_WRITEDOWN, 0);
+
+  const dispatched = settlements.length;
+  const rto = settlements.filter((s) => s.outcome === "rto").length;
+  const returned = settlements.filter((s) => s.outcome === "returned").length;
+
+  return {
+    dispatched,
+    delivered: dispatched - rto,
+    paid: dispatched - rto - returned,
+    rtoCost: lossOn("rto"),
+    returnCost: lossOn("returned"),
+  };
 }

@@ -1,144 +1,112 @@
 "use client";
 
 /**
- * The leakage funnel: 100 dispatched → 83 delivered → 66.4 paid.
+ * The leakage funnel: dispatched → delivered → paid.
  *
- * Widths proportional, with the cost carried at each stage shown beneath. This
- * is the chart that answers "where did the other third of my parcels go?" —
- * and it is deliberately expressed in parcels, not percentages, because a
- * seller counts parcels.
+ * Built in HTML rather than SVG so its labels stay at full size on a phone.
+ * Expressed in parcels, because that is what a seller counts; the rupee cost
+ * of each drop sits beside the drop it belongs to, not in a legend.
  */
 
-import { useId } from "react";
-import { inr } from "@/lib/format";
+import { Amount } from "@/components/shared/amount";
 import { ChartFrame } from "./chart-frame";
+import { count, inr, pct } from "@/lib/format";
+import type { Funnel } from "@/engine/waterfall";
 
-const W = 720;
-const H = 208;
-const PAD = 24;
-const BAR_H = 52;
-const TOP = 34;
+export type FunnelInput = Funnel;
 
-export type FunnelInput = {
-  dispatched: number;
-  delivered: number;
-  paid: number;
-  /** Rupees lost at each stage, per 100 parcels dispatched. */
-  rtoCost: number;
-  returnCost: number;
-  /** What the surviving parcels actually contribute. */
-  netPerPaid: number;
-};
-
-export function LeakageFunnel({ data }: { data: FunnelInput }) {
-  const id = useId();
+export function LeakageFunnel({ data, perHundred = false }: { data: Funnel; perHundred?: boolean }) {
   const { dispatched, delivered, paid } = data;
-
-  const scale = (n: number) => (n / Math.max(dispatched, 1)) * (W - PAD * 2);
+  const base = Math.max(dispatched, 1);
+  const fmt = (n: number) => (perHundred ? n.toFixed(n % 1 === 0 ? 0 : 1) : count(n));
 
   const stages = [
     {
       key: "dispatched",
-      label: "Parcels you shipped",
       labelHi: "आपने भेजे",
-      count: dispatched,
+      label: "Parcels you shipped",
+      n: dispatched,
       fill: "var(--info)",
-      bg: "var(--info-bg)",
-      cost: null as number | null,
-      note: "Every one of these costs you goods, packing and freight up front.",
+      track: "var(--info-bg)",
     },
     {
       key: "delivered",
-      label: "Reached the customer",
       labelHi: "ग्राहक तक पहुँचे",
-      count: delivered,
+      label: "Reached the customer",
+      n: delivered,
       fill: "var(--warning)",
-      bg: "var(--warning-bg)",
-      cost: data.rtoCost,
-      note: `${(dispatched - delivered).toFixed(0)} were refused. You pay both freight legs and get the goods back handled.`,
+      track: "var(--warning-bg)",
+      drop: { n: dispatched - delivered, what: "refused at the door", cost: data.rtoCost },
     },
     {
       key: "paid",
-      label: "Actually paid you",
       labelHi: "जिनसे पैसा मिला",
-      count: paid,
+      label: "Actually paid you",
+      n: paid,
       fill: "var(--success)",
-      bg: "var(--success-bg)",
-      cost: data.returnCost,
-      note: `${(delivered - paid).toFixed(0)} more came back as returns after delivery.`,
+      track: "var(--success-bg)",
+      drop: { n: delivered - paid, what: "sent back after delivery", cost: data.returnCost },
     },
   ];
 
-  const tableRows = stages.map((s) => ({
-    label: `${s.labelHi} · ${s.label}`,
-    value: `${s.count.toFixed(1)} parcels`,
-    note: s.cost ? `${inr(s.cost)} lost at this step` : s.note,
-  }));
+  const lost = data.rtoCost + data.returnCost;
 
   return (
     <ChartFrame
-      title={`Of every ${dispatched.toFixed(0)} parcels you ship, ${paid.toFixed(0)} pay you`}
+      title={`Of every ${fmt(dispatched)} parcels you ship, ${fmt(paid)} pay you`}
       titleHi="कितने पार्सल से सच में पैसा मिला"
-      description={`${dispatched.toFixed(0)} dispatched, ${delivered.toFixed(0)} delivered, ${paid.toFixed(0)} paid.`}
-      tableRows={tableRows}
+      description={`${fmt(dispatched)} dispatched, ${fmt(delivered)} delivered, ${fmt(paid)} paid.`}
+      tableRows={stages.map((s) => ({
+        label: `${s.labelHi} · ${s.label}`,
+        value: `${fmt(s.n)} parcels`,
+        note: s.drop ? `${fmt(s.drop.n)} ${s.drop.what} — ${inr(s.drop.cost)} lost` : undefined,
+      }))}
       tableHeaders={["Stage", "Parcels"]}
     >
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-labelledby={`${id}-t ${id}-d`}>
-        <title id={`${id}-t`}>Parcel leakage funnel</title>
-        <desc id={`${id}-d`}>
-          {dispatched.toFixed(0)} parcels dispatched, {delivered.toFixed(0)} delivered,{" "}
-          {paid.toFixed(0)} paid. The rest cost both freight legs and a write-down on the goods.
-        </desc>
-
-        {stages.map((s, i) => {
-          const y = TOP + i * (BAR_H + 8);
-          const width = Math.max(scale(s.count), 2);
+      <ol className="space-y-3">
+        {stages.map((s) => {
+          const share = s.n / base;
           return (
-            <g key={s.key}>
-              <rect x={PAD} y={y} width={W - PAD * 2} height={BAR_H} rx="4" fill="var(--surface-sunken)" />
-              <rect x={PAD} y={y} width={width} height={BAR_H} rx="4" fill={s.bg} stroke={s.fill} strokeWidth="1.5" />
-
-              <text x={PAD + 12} y={y + 21} className="hi" fill="var(--text)" fontSize="12" fontWeight="600">
-                {s.labelHi}
-              </text>
-              <text x={PAD + 12} y={y + 37} fill="var(--text-muted)" fontSize="10.5">
-                {s.label}
-              </text>
-
-              <text
-                x={PAD + width - 12}
-                y={y + 31}
-                textAnchor="end"
-                className="tabular"
-                fill={s.fill}
-                fontSize="18"
-                fontWeight="700"
-              >
-                {s.count.toFixed(s.count % 1 === 0 ? 0 : 1)}
-              </text>
-
-              {s.cost ? (
-                <text
-                  x={W - PAD - 8}
-                  y={y + 31}
-                  textAnchor="end"
-                  className="tabular"
-                  fill="var(--danger)"
-                  fontSize="11"
-                  fontWeight="600"
-                >
-                  −{inr(s.cost)}
-                </text>
+            <li key={s.key}>
+              {s.drop ? (
+                <p className="mb-1.5 flex flex-wrap items-baseline gap-x-2 pl-1 text-[12px] text-[var(--text-muted)]">
+                  <span aria-hidden className="text-[var(--danger)]">↓</span>
+                  <span>
+                    <strong className="tabular font-semibold text-[var(--text)]">{fmt(s.drop.n)}</strong>{" "}
+                    {s.drop.what}
+                  </span>
+                  <span className="text-[var(--text-subtle)]">·</span>
+                  <Amount value={-s.drop.cost} size="sm" tone="danger" />
+                </p>
               ) : null}
-            </g>
+              <div className="flex items-center gap-3">
+                <div className="relative h-11 min-w-0 flex-1 overflow-hidden rounded-[var(--radius-input)] bg-[var(--surface-sunken)]">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-[var(--radius-input)] border"
+                    style={{ width: `${Math.max(share * 100, 2)}%`, background: s.track, borderColor: s.fill }}
+                  />
+                  <div className="relative flex h-full items-center px-3 leading-tight">
+                    <span className="min-w-0">
+                      <span className="hi block truncate text-[13px] font-semibold text-[var(--text)]">{s.labelHi}</span>
+                      <span className="block truncate text-[11px] text-[var(--text-muted)]">{s.label}</span>
+                    </span>
+                  </div>
+                </div>
+                <div className="w-[68px] shrink-0 text-right leading-tight">
+                  <span className="type-h2 tabular block" style={{ color: s.fill }}>
+                    {fmt(s.n)}
+                  </span>
+                  <span className="tabular text-[11px] text-[var(--text-subtle)]">{pct(share, 0)}</span>
+                </div>
+              </div>
+            </li>
           );
         })}
-
-        <text x={PAD} y={H - 8} fill="var(--text-muted)" fontSize="10.5">
-          The {(dispatched - paid).toFixed(0)} that never paid still cost you freight both ways, GST
-          on that freight, and the goods came back worth less.
-        </text>
-      </svg>
+      </ol>
+      <p className="type-caption mt-3 text-[var(--text-muted)]">
+        The {fmt(dispatched - paid)} that never paid still cost you shipping, GST on it, packing, and goods that came
+        back worth less — <strong className="text-[var(--danger)]">{inr(lost)}</strong> in all.
+      </p>
     </ChartFrame>
   );
 }

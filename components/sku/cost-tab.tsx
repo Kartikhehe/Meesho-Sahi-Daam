@@ -8,16 +8,16 @@ import { Card } from "@/components/ui/card";
 import { WaterfallChart } from "@/components/charts/waterfall-chart";
 import { LeakageFunnel } from "@/components/charts/leakage-funnel";
 import { MoneyValue } from "@/components/shared/money-value";
-import { buildWaterfall } from "@/engine/waterfall";
-import { paidFraction } from "@/engine/cost";
+import { buildWaterfall, funnelPer100 } from "@/engine/waterfall";
+
 import { slabFor } from "@/engine/money";
 import type { ListingAnalysis } from "@/lib/selectors";
 import { inr, pct } from "@/lib/format";
+import { Callout } from "@/components/shared/callout";
 
 export function CostTab({ analysis }: { analysis: ListingAnalysis }) {
   const { listing, inputs, floor } = analysis;
   const waterfall = buildWaterfall(listing.price, inputs);
-  const paid = paidFraction(inputs.rtoRate, inputs.returnRate);
   const slab = slabFor(listing.weightGrams);
 
   const lines: { label: string; labelHi: string; value: string; note: string }[] = [
@@ -72,27 +72,17 @@ export function CostTab({ analysis }: { analysis: ListingAnalysis }) {
       </Card>
 
       {slab.gramsToNextSlabDown !== null && slab.savingIfDropped > 0 ? (
-        <Card className="border-l-[3px] border-l-[var(--warning)] p-4">
-          <p className="text-[13px] leading-relaxed text-[var(--text)]">
-            <strong>A weight slab is worth {inr(slab.savingIfDropped)} a parcel.</strong> This
-            parcel is {slab.gramsToNextSlabDown}g over the next slab down. Lighter packaging would
+        <Callout tone="info" titleHi="वज़न का एक स्लैब" title={`One weight slab is worth ${inr(slab.savingIfDropped)} a parcel`}>
+          <p>
+            This parcel is {slab.gramsToNextSlabDown}g over the next slab down. Lighter packaging would
             cut {inr(slab.savingIfDropped)} from every single order — which moves your survival
             price, not just this month&rsquo;s bill.
           </p>
-        </Card>
+        </Callout>
       ) : null}
 
       <Card className="p-4">
-        <LeakageFunnel
-          data={{
-            dispatched: 100,
-            delivered: (1 - inputs.rtoRate) * 100,
-            paid: paid.value * 100,
-            rtoCost: inputs.rtoRate * 100 * inputs.reverseFreight * 0.5,
-            returnCost: (1 - inputs.rtoRate) * inputs.returnRate * 100 * inputs.reverseFreight,
-            netPerPaid: analysis.contribution.value,
-          }}
-        />
+        <LeakageFunnel data={funnelPer100(inputs)} perHundred />
       </Card>
 
       <Card className="p-4">

@@ -26,6 +26,8 @@ import { RTO_BY_COD } from "@/engine/constants";
 import { useSeller } from "@/lib/use-seller";
 import { TACTICS, type Lever } from "@/content/tactics";
 import { inr, pct, count } from "@/lib/format";
+import { Page, PageHeader } from "@/components/shared/page-header";
+import { Callout } from "@/components/shared/callout";
 
 /** RTO is a consequence of COD share, so the slider moves the cause. */
 function rtoFromCod(codShare: number): number {
@@ -62,14 +64,14 @@ function UnlockInner() {
 
   if (!base) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-5 md:px-6">
+      <Page>
         <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
           <EmptyState
             title="Nothing to simulate yet"
             description="Once you have a listing, this screen shows exactly how much your cost, returns or cash-on-delivery share would have to move to open a price band."
           />
         </StateGate>
-      </div>
+      </Page>
     );
   }
 
@@ -111,7 +113,7 @@ function UnlockInner() {
   const touched = cogs !== null || returnRate !== null || codShare !== null || adRate !== null;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 md:px-6">
+    <Page>
       <Link
         href={`/sku/${base.listing.id}`}
         className="inline-flex min-h-11 items-center gap-1.5 text-[13px] text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -120,28 +122,25 @@ function UnlockInner() {
         {base.listing.name}
       </Link>
 
-      <header className="mb-4 mt-2">
-        <h1 className="hi text-2xl font-semibold text-[var(--text)]">लागत कम करें</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          Cost unlock — move the four things you control, and watch your survival price move with
-          them
-        </p>
-      </header>
+      <PageHeader
+        titleHi="लागत कम करें"
+        title="Cost unlock"
+        description="Move the four things you control and watch your survival price move with them."
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         {/* The verdict banner — the reason this screen exists. */}
         {justUnlocked ? (
-          <Card className="mb-4 border-l-[3px] border-l-[var(--success)] bg-[var(--success-bg)] p-4">
-            <p className="hi text-sm font-semibold text-[var(--success)]">बैंड खुल गया</p>
-            <p className="mt-1 text-[13px] leading-relaxed text-[var(--text)]">
+          <Callout tone="success" titleHi="बैंड खुल गया" title="A price that works now exists" className="mb-4">
+            <p>
               With these changes there is now a price that both covers your costs and gets this
               listing seen — anywhere between {inr(newFloor.value)} and {inr(base.ceiling.value)}.
               That band did not exist before.
             </p>
-          </Card>
+          </Callout>
         ) : wasNoBand ? (
-          <Card className="mb-4 border-l-[3px] border-l-[var(--danger)] p-4">
-            <p className="text-[13px] leading-relaxed text-[var(--text)]">
+          <Callout tone="danger" titleHi="अभी कोई सही दाम नहीं" title="No price works for this listing yet" className="mb-4">
+            <p>
               Right now no price works for this listing: your survival price of{" "}
               <strong>{inr(newFloor.value)}</strong> is{" "}
               <strong className="text-[var(--danger)]">
@@ -150,7 +149,7 @@ function UnlockInner() {
               above the ceiling of {inr(base.ceiling.value)}. Move the sliders below until the gap
               closes — that is what has to change, not the price.
             </p>
-          </Card>
+          </Callout>
         ) : null}
 
         <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
@@ -294,7 +293,7 @@ function UnlockInner() {
           </Card>
         </div>
       </StateGate>
-    </div>
+    </Page>
   );
 }
 

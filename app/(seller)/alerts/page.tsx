@@ -24,6 +24,7 @@ import { LANGUAGES, alertMessage, type Lang } from "@/lib/i18n";
 import { inr, formatDateShort, count } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { FiredTrigger } from "@/engine/types";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 export default function AlertsPage() {
   const { world, seller, status, error } = useSeller();
@@ -43,13 +44,12 @@ export default function AlertsPage() {
   const listingName = (id: string) => world?.listings.find((l) => l.id === id)?.name ?? id;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <h1 className="hi text-2xl font-semibold text-[var(--text)]">सूचनाएँ</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          Alerts — what changed, what it costs you, and one thing to do about it
-        </p>
-      </header>
+    <Page width="narrow">
+      <PageHeader
+        titleHi="सूचनाएँ"
+        title="Alerts"
+        description="What changed, what it costs you, and the one thing to do about it."
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-80 w-full" />}>
         <Card className="mb-4 flex flex-wrap items-center gap-3 p-3">
@@ -127,7 +127,7 @@ export default function AlertsPage() {
           </section>
         ) : null}
       </StateGate>
-    </div>
+    </Page>
   );
 }
 

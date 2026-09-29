@@ -36,6 +36,7 @@ export function DataTable<T>({
   emptyDescription,
   initialSort,
   caption,
+  mobileCard,
 }: {
   rows: T[];
   columns: Column<T>[];
@@ -45,6 +46,12 @@ export function DataTable<T>({
   emptyDescription: string;
   initialSort?: { key: string; direction: "asc" | "desc" };
   caption?: string;
+  /**
+   * How a row reads on a phone. When given, the table becomes a card list
+   * below 768px — a sideways-scrolling table on a 360px screen shows the name
+   * and price and hides every column that matters.
+   */
+  mobileCard?: (row: T) => ReactNode;
 }) {
   const [sort, setSort] = useState(initialSort ?? null);
 
@@ -73,8 +80,13 @@ export function DataTable<T>({
     return <EmptyState title={emptyTitle} description={emptyDescription} />;
   }
 
-  return (
-    <div className="overflow-x-auto rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)]">
+  const table = (
+    <div
+      className={cn(
+        "scroll-quiet overflow-x-auto rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]",
+        mobileCard && "hidden md:block",
+      )}
+    >
       <table className="w-full text-left text-[13px]">
         {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead className="sticky top-0 z-10 bg-[var(--surface-sunken)]">
@@ -88,7 +100,7 @@ export function DataTable<T>({
                   style={{ width: c.width }}
                   aria-sort={active ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
                   className={cn(
-                    "px-3 py-2.5 font-semibold text-[var(--text-muted)]",
+                    "whitespace-nowrap px-3 py-2.5 text-[12px] font-medium text-[var(--text-muted)] first:pl-4 last:pr-4",
                     c.numeric && "text-right",
                     c.hideOnMobile && "hidden md:table-cell",
                   )}
@@ -139,14 +151,14 @@ export function DataTable<T>({
               }
               className={cn(
                 "border-b border-[var(--border)] last:border-0",
-                onRowClick && "cursor-pointer hover:bg-[var(--surface-sunken)]",
+                onRowClick && "cursor-pointer transition-colors hover:bg-[var(--surface-hover)]",
               )}
             >
               {columns.map((c) => (
                 <td
                   key={c.key}
                   className={cn(
-                    "px-3 py-2.5 align-middle text-[var(--text)]",
+                    "px-3 py-3 align-middle text-[var(--text)] first:pl-4 last:pr-4",
                     c.numeric && "tabular text-right",
                     c.hideOnMobile && "hidden md:table-cell",
                   )}
@@ -159,5 +171,32 @@ export function DataTable<T>({
         </tbody>
       </table>
     </div>
+  );
+
+  if (!mobileCard) return table;
+
+  return (
+    <>
+      <ul className="space-y-2 md:hidden" aria-label={caption}>
+        {sorted.map((row) => (
+          <li key={getRowKey(row)}>
+            {onRowClick ? (
+              <button
+                type="button"
+                onClick={() => onRowClick(row)}
+                className="block w-full rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-3.5 text-left shadow-[var(--shadow-card)] active:bg-[var(--surface-sunken)]"
+              >
+                {mobileCard(row)}
+              </button>
+            ) : (
+              <div className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-[var(--shadow-card)]">
+                {mobileCard(row)}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {table}
+    </>
   );
 }

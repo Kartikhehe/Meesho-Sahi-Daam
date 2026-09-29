@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
+import { CheckCircle2, Inbox, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /**
- * Empty states always say what to do next, never just "No data".
- * An empty screen is a moment where a seller decides whether this tool is for
- * her, so it gets the same care as a full one.
+ * Empty states always say what to do next, never just "No data". An empty
+ * screen is the moment a seller decides whether this tool is for her.
+ *
+ * A calm, genuinely good empty state ("nothing is below its floor") uses the
+ * success tone — it is news, not an absence.
  */
 export function EmptyState({
   title,
@@ -19,43 +22,47 @@ export function EmptyState({
   tone?: "neutral" | "success";
   className?: string;
 }) {
+  const Icon = tone === "success" ? CheckCircle2 : Inbox;
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-[var(--radius-card)] border border-dashed px-6 py-10 text-center",
+        "flex flex-col items-center justify-center rounded-[var(--radius-card)] border px-6 py-12 text-center",
         tone === "success"
-          ? "border-[var(--success)]/35 bg-[var(--success-bg)]"
-          : "border-[var(--border-strong)] bg-[var(--surface-sunken)]",
+          ? "border-[var(--success-line)] bg-[var(--success-bg)]"
+          : "border-dashed border-[var(--border-strong)] bg-[var(--surface)]",
         className,
       )}
     >
-      <p
+      <span
+        aria-hidden
         className={cn(
-          "text-sm font-semibold",
-          tone === "success" ? "text-[var(--success)]" : "text-[var(--text)]",
+          "mb-3 grid h-10 w-10 place-items-center rounded-full",
+          tone === "success"
+            ? "bg-[var(--surface)] text-[var(--success)]"
+            : "bg-[var(--surface-sunken)] text-[var(--text-subtle)]",
         )}
       >
+        <Icon size={20} strokeWidth={1.75} />
+      </span>
+      <p className={cn("type-h3", tone === "success" ? "text-[var(--success)]" : "text-[var(--text)]")}>
         {title}
       </p>
-      <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-[var(--text-muted)]">
-        {description}
-      </p>
-      {action ? <div className="mt-4">{action}</div> : null}
+      <p className="type-small mt-1.5 max-w-sm text-[var(--text-muted)]">{description}</p>
+      {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );
 }
 
-/** Skeleton block for loading states. */
 export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className={cn("animate-pulse rounded-[var(--radius-input)] bg-[var(--surface-sunken)]", className)}
+      className={cn("animate-pulse rounded-[var(--radius-card)] bg-[var(--surface-sunken)]", className)}
     />
   );
 }
 
-/** The standard three-state wrapper: loading, error, empty, then content. */
+/** Loading, error, empty, then content — in that order, everywhere. */
 export function StateGate({
   status,
   error,
@@ -72,15 +79,22 @@ export function StateGate({
   children: ReactNode;
 }) {
   if (status === "loading" || status === "idle") {
-    return <>{skeleton ?? <Skeleton className="h-40 w-full" />}</>;
+    return (
+      <div role="status" aria-label="Loading">
+        {skeleton ?? <Skeleton className="h-40 w-full" />}
+      </div>
+    );
   }
   if (status === "error") {
     return (
-      <div className="rounded-[var(--radius-card)] border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-4 py-3">
-        <p className="text-sm font-medium text-[var(--danger)]">This could not be loaded</p>
-        <p className="mt-1 text-[13px] text-[var(--text-muted)]">
-          {error ?? "Try again, or move to another screen."}
-        </p>
+      <div className="flex gap-3 rounded-[var(--radius-card)] border border-[var(--danger-line)] bg-[var(--danger-bg)] px-4 py-3.5">
+        <TriangleAlert size={18} aria-hidden className="mt-0.5 shrink-0 text-[var(--danger)]" />
+        <div>
+          <p className="type-h3 text-[var(--danger)]">This could not be loaded</p>
+          <p className="type-small mt-1 text-[var(--text-muted)]">
+            {error ?? "Try again, or move to another screen."}
+          </p>
+        </div>
       </div>
     );
   }

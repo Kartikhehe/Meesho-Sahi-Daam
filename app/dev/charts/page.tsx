@@ -11,8 +11,8 @@
 
 import { useState } from "react";
 import { classifyBand } from "@/engine/band";
-import { paidFraction, survivalPrice, contributionPerOrder, type CostInputs } from "@/engine/cost";
-import { buildWaterfall } from "@/engine/waterfall";
+import { survivalPrice, contributionPerOrder, type CostInputs } from "@/engine/cost";
+import { buildWaterfall, funnelPer100 } from "@/engine/waterfall";
 import { priceShare, visibilityGate } from "@/engine/demand";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,17 +76,8 @@ export default function ChartsDevPage() {
   const bandThin = classifyBand(340, 352, 346).value;
 
   const waterfall = buildWaterfall(305, CASE_1).value;
-  const paid = paidFraction(CASE_1.rtoRate, CASE_1.returnRate).value;
 
-  const funnel = {
-    dispatched: 100,
-    delivered: (1 - CASE_1.rtoRate) * 100,
-    paid: paid * 100,
-    rtoCost: CASE_1.rtoRate * 100 * (CASE_1.reverseFreight * 0.5 + CASE_1.cogs * 0.15),
-    returnCost:
-      (1 - CASE_1.rtoRate) * CASE_1.returnRate * 100 * (CASE_1.reverseFreight + CASE_1.cogs * 0.15),
-    netPerPaid: contributionPerOrder(305, CASE_1).value,
-  };
+  const funnel = funnelPer100(CASE_1);
 
   const curve = buildCurve(CASE_2, CEILING);
 
@@ -149,7 +140,7 @@ export default function ChartsDevPage() {
 
         <h2 className="pt-2 text-sm font-semibold text-[var(--text)]">3 · Leakage funnel</h2>
         {frame(
-          <LeakageFunnel data={funnel} />,
+          <LeakageFunnel data={funnel} perHundred />,
           "Where the parcels go",
           "100 dispatched, 83 delivered, 66 paid — with the cost carried at each step.",
         )}

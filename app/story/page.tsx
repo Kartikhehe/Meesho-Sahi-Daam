@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { STORY } from "@/content/story";
 import { useStartStory } from "@/components/story/story-rail";
 import { useUiStore } from "@/lib/store/ui-store";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 export default function StoryPage() {
   const start = useStartStory();
@@ -32,13 +33,12 @@ export default function StoryPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 md:px-6">
-      <header className="mb-5">
-        <h1 className="hi text-2xl font-semibold text-[var(--text)]">कहानी</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          Story mode — nine steps through the real product
-        </p>
-      </header>
+    <Page width="narrow">
+      <PageHeader
+        titleHi="कहानी"
+        title="Story mode"
+        description="Nine steps through the real product, with every number computed live."
+      />
 
       <Card className="mb-5 p-5">
         <p className="text-[14px] leading-relaxed text-[var(--text)]">
@@ -87,6 +87,6 @@ export default function StoryPage() {
           </li>
         ))}
       </ol>
-    </div>
+    </Page>
   );
 }

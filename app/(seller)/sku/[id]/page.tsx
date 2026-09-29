@@ -11,16 +11,18 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Skeleton, StateGate, EmptyState } from "@/components/shared/empty-state";
 import { BandChip, ScoreChip, StageChip } from "@/components/shared/status-chip";
+import { ProductTile } from "@/components/shared/product-tile";
+import { Amount } from "@/components/shared/amount";
+import { Page } from "@/components/shared/page-header";
 import { PriceTab } from "@/components/sku/price-tab";
 import { CostTab } from "@/components/sku/cost-tab";
 import { MarketTab } from "@/components/sku/market-tab";
 import { HistoryTab } from "@/components/sku/history-tab";
 import { ExperimentTab } from "@/components/sku/experiment-tab";
 import { useListing } from "@/lib/use-seller";
-import { inr } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
 const TABS = [
@@ -61,13 +63,14 @@ export default function SkuPage({ params }: { params: Promise<{ id: string }> })
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-5 md:px-6">
+    <Page>
       <Link
         href="/catalogue"
-        className="inline-flex min-h-11 items-center gap-1.5 text-[13px] text-[var(--text-muted)] hover:text-[var(--text)]"
+        className="-ml-1.5 inline-flex min-h-9 items-center gap-1 rounded-md px-1.5 text-[13px] font-medium text-[var(--text-muted)] hover:text-[var(--text)]"
       >
-        <ArrowLeft size={14} aria-hidden />
-        My catalogue
+        <ChevronLeft size={15} aria-hidden />
+        <span className="hi">मेरा सामान</span>
+        <span className="text-[var(--text-subtle)]">· My catalogue</span>
       </Link>
 
       <StateGate
@@ -87,24 +90,30 @@ export default function SkuPage({ params }: { params: Promise<{ id: string }> })
           />
         ) : (
           <>
-            <header className="mb-4 mt-2">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h1 className="text-xl font-semibold text-[var(--text)]">
-                    {analysis.listing.name}
-                  </h1>
-                  <p className="text-[12px] text-[var(--text-subtle)]">
-                    {analysis.listing.id} · {analysis.listing.category} ·{" "}
-                    {analysis.listing.weightGrams}g
-                  </p>
+            <header className="mb-5 mt-1">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3.5">
+                  <ProductTile
+                    category={analysis.listing.category}
+                    colour={analysis.listing.attributes.colourFamily}
+                    size="lg"
+                  />
+                  <div className="min-w-0">
+                    <h1 className="type-h1 text-[var(--text)]">{analysis.listing.name}</h1>
+                    <p className="type-caption mt-1 text-[var(--text-subtle)]">
+                      {analysis.listing.category.replace(/-/g, " ")} · {analysis.listing.weightGrams}g ·{" "}
+                      {analysis.listing.rating.toFixed(1)}★ · {analysis.listing.id}
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <BandChip verdict={analysis.band.value.verdict} lang="hi" />
+                      <StageChip stage={analysis.listing.stage} />
+                      <ScoreChip score={analysis.score.value} showLabel />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <BandChip verdict={analysis.band.value.verdict} />
-                  <StageChip stage={analysis.listing.stage} />
-                  <ScoreChip score={analysis.score.value} />
-                  <span className="tabular text-lg font-semibold text-[var(--text)]">
-                    {inr(analysis.listing.price)}
-                  </span>
+                <div className="flex items-baseline gap-2 pl-[70px] sm:flex-col sm:items-end sm:gap-0.5 sm:pl-0">
+                  <Amount value={analysis.listing.price} size="figure" />
+                  <span className="hi type-caption text-[var(--text-subtle)]">आज का दाम · today</span>
                 </div>
               </div>
             </header>
@@ -112,7 +121,7 @@ export default function SkuPage({ params }: { params: Promise<{ id: string }> })
             <div
               role="tablist"
               aria-label="Listing detail"
-              className="mb-4 flex gap-1 overflow-x-auto border-b border-[var(--border)]"
+              className="scroll-quiet -mx-4 mb-5 flex gap-1 overflow-x-auto border-b border-[var(--border)] px-4 sm:mx-0 sm:px-0"
             >
               {TABS.map((t, i) => (
                 <button
@@ -134,14 +143,14 @@ export default function SkuPage({ params }: { params: Promise<{ id: string }> })
                   }}
                   onClick={() => select(t.key)}
                   className={cn(
-                    "-mb-px shrink-0 border-b-2 px-3 py-2.5 text-[13px] font-medium",
+                    "-mb-px flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 px-3 text-[14px] transition-colors",
                     tab === t.key
-                      ? "border-[var(--brand-magenta)] text-[var(--text)]"
-                      : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]",
+                      ? "border-[var(--brand-magenta)] font-semibold text-[var(--text)]"
+                      : "border-transparent font-medium text-[var(--text-muted)] hover:text-[var(--text)]",
                   )}
                 >
                   <span className="hi">{t.labelHi}</span>
-                  <span className="ml-1.5 text-[11px] opacity-70">{t.label}</span>
+                  <span className="hidden text-[12px] font-normal text-[var(--text-subtle)] sm:inline">{t.label}</span>
                 </button>
               ))}
             </div>
@@ -161,6 +170,6 @@ export default function SkuPage({ params }: { params: Promise<{ id: string }> })
           </>
         )}
       </StateGate>
-    </div>
+    </Page>
   );
 }

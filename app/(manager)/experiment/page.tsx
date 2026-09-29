@@ -19,6 +19,8 @@ import { useWorld } from "@/lib/use-seller";
 import { cohortHealth, type SellerHealth } from "@/lib/cohort";
 import { BUYER_PRICE_INDEX_GATE } from "@/engine/constants";
 import { inr, count, pct } from "@/lib/format";
+import { Page, PageHeader } from "@/components/shared/page-header";
+import { Callout } from "@/components/shared/callout";
 
 type ArmStats = {
   n: number;
@@ -130,29 +132,21 @@ export default function ExperimentPage() {
   const bpi = controlAvgPrice > 0 ? (treatedAvgPrice / controlAvgPrice) * 100 : 100;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          M4
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Experiment readout</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Sellers who see the tool, against those who do not
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Experiment readout"
+        description={<>Sellers who see the tool, against those who do not</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
-        <Card className="mb-4 border-l-[3px] border-l-[var(--warning)] p-4">
-          <h2 className="text-[13px] font-semibold text-[var(--text)]">
-            This pilot is far too small to conclude anything
-          </h2>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-muted)]">
+        <Callout tone="warning" title="This pilot is far too small to conclude anything" className="mb-4">
+<p>
             {count(treated.length)} treated sellers against {count(control.length)} control. Every
             interval below is wide enough to contain zero, which is exactly what should happen at
             this size. We show it anyway, because a readout that only appears once it says something
             flattering is not a readout.
           </p>
-        </Card>
+</Callout>
 
         <div className="mb-4 grid gap-3 sm:grid-cols-2">
           <MetricCard
@@ -226,6 +220,6 @@ export default function ExperimentPage() {
           </p>
         </Card>
       </StateGate>
-    </div>
+    </Page>
   );
 }

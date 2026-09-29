@@ -1,30 +1,33 @@
 "use client";
 
 /**
- * Price against orders and contribution — the "aha" chart.
+ * Price against orders and earnings — the "aha" chart.
  *
- * X is price. Left Y is orders per month (falling as price rises). Right Y is
- * contribution ₹ per month, which rises then collapses: below the floor every
- * order loses money, above the ceiling nobody sees the listing. The peak sits
- * inside the band, and seeing that peak is what makes the band feel real
- * rather than asserted.
+ * Orders fall as price rises. Earnings rise, peak, then collapse: below the
+ * floor every order loses money, above the ceiling nobody sees the listing.
+ * The peak sits inside the band, and seeing it is what makes the band feel
+ * real rather than asserted. Both series come from the demand and cost
+ * models — computed, never drawn.
  *
- * Both series come from the demand model and the cost model — this curve is
- * computed, never drawn by hand.
+ * The vertical rules (floor, ceiling, today, suggested) are keyed in a legend
+ * beneath rather than labelled along the top edge, where four labels within a
+ * few rupees of each other would overprint.
  */
 
 import { useId } from "react";
 import { inr, inrCompact } from "@/lib/format";
+import { useWidth } from "@/lib/use-width";
 import { ChartFrame } from "./chart-frame";
 
-const W = 720;
-const H = 300;
-const PAD_L = 48;
-const PAD_R = 56;
-const PAD_T = 22;
-const PAD_B = 48;
+const H = 260;
+const PAD_L = 44;
+const PAD_R = 52;
+const PAD_T = 18;
+const PAD_B = 34;
 
 export type CurvePoint = { price: number; ordersPerMonth: number; contributionPerMonth: number };
+
+type Rule = { key: string; value: number; label: string; colour: string; dash: string };
 
 export function PriceProfitCurve({
   points,
@@ -40,6 +43,9 @@ export function PriceProfitCurve({
   recommended: number;
 }) {
   const id = useId();
+  const { ref, width } = useWidth(640);
+  const W = Math.max(300, width);
+
   if (points.length < 2) {
     return (
       <ChartFrame
@@ -56,151 +62,122 @@ export function PriceProfitCurve({
     );
   }
 
-  const prices = points.map((p) => p.price);
-  const minP = Math.min(...prices);
-  const maxP = Math.max(...prices);
+  const minP = Math.min(...points.map((p) => p.price));
+  const maxP = Math.max(...points.map((p) => p.price));
   const maxOrders = Math.max(...points.map((p) => p.ordersPerMonth), 1);
-  const contributions = points.map((p) => p.contributionPerMonth);
-  const maxC = Math.max(...contributions, 1);
-  const minC = Math.min(...contributions, 0);
+  const maxC = Math.max(...points.map((p) => p.contributionPerMonth), 1);
+  const minC = Math.min(...points.map((p) => p.contributionPerMonth), 0);
 
-  const x = (price: number) => PAD_L + ((price - minP) / Math.max(maxP - minP, 1)) * (W - PAD_L - PAD_R);
-  const yOrders = (n: number) => H - PAD_B - (n / maxOrders) * (H - PAD_T - PAD_B);
-  const yContrib = (c: number) =>
-    H - PAD_B - ((c - minC) / Math.max(maxC - minC, 1)) * (H - PAD_T - PAD_B);
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+  const x = (p: number) => PAD_L + ((p - minP) / Math.max(maxP - minP, 1)) * plotW;
+  const yO = (n: number) => PAD_T + plotH - (n / maxOrders) * plotH;
+  const yC = (c: number) => PAD_T + plotH - ((c - minC) / Math.max(maxC - minC, 1)) * plotH;
 
-  const ordersPath = points.map((p, i) => `${i ? "L" : "M"}${x(p.price)},${yOrders(p.ordersPerMonth)}`).join(" ");
-  const contribPath = points
-    .map((p, i) => `${i ? "L" : "M"}${x(p.price)},${yContrib(p.contributionPerMonth)}`)
-    .join(" ");
+  const ordersPath = points.map((p, i) => `${i ? "L" : "M"}${x(p.price).toFixed(1)},${yO(p.ordersPerMonth).toFixed(1)}`).join(" ");
+  const contribPath = points.map((p, i) => `${i ? "L" : "M"}${x(p.price).toFixed(1)},${yC(p.contributionPerMonth).toFixed(1)}`).join(" ");
+  const areaPath = `${contribPath} L${x(maxP).toFixed(1)},${yC(Math.max(minC, 0)).toFixed(1)} L${x(minP).toFixed(1)},${yC(Math.max(minC, 0)).toFixed(1)} Z`;
 
   const peak = points.reduce((a, b) => (b.contributionPerMonth > a.contributionPerMonth ? b : a));
-  const zeroY = yContrib(0);
+  const zeroY = yC(0);
 
-  const rules = [
-    { value: floor, label: "सुरक्षा दाम", colour: "var(--danger)" },
-    { value: ceiling, label: "दिखने की सीमा", colour: "var(--info)" },
-    { value: current, label: "आपका दाम", colour: "var(--text)" },
-    ...(recommended > 0 ? [{ value: recommended, label: "सुझाया", colour: "var(--success)" }] : []),
-  ].filter((r) => r.value >= minP && r.value <= maxP);
+  const rules: Rule[] = (
+    [
+      { key: "floor", value: floor, label: "सुरक्षा दाम · floor", colour: "var(--danger)", dash: "4 3" },
+      { key: "ceiling", value: ceiling, label: "दिखने की सीमा · ceiling", colour: "var(--info)", dash: "4 3" },
+      { key: "current", value: current, label: "आपका दाम · today", colour: "var(--text)", dash: "1.5 3" },
+      ...(recommended > 0
+        ? [{ key: "rec", value: recommended, label: "सुझाया · suggested", colour: "var(--success)", dash: "0" }]
+        : []),
+    ] as Rule[]
+  ).filter((r) => r.value >= minP && r.value <= maxP);
 
-  const tableRows = points
-    .filter((_, i) => i % Math.ceil(points.length / 8) === 0)
-    .map((p) => ({
-      label: inr(p.price),
-      value: `${p.ordersPerMonth.toFixed(0)} orders · ${inr(p.contributionPerMonth)}`,
-    }));
+  const ticks = W < 440 ? 3 : 5;
+  const xTicks = Array.from({ length: ticks }, (_, i) => minP + ((maxP - minP) * i) / (ticks - 1));
 
   return (
     <ChartFrame
       title="Price against orders and earnings, per month"
       titleHi="दाम, ऑर्डर और कमाई"
-      description={`Earnings peak at ${inr(peak.price)}, where roughly ${peak.ordersPerMonth.toFixed(0)} orders a month bring in ${inr(peak.contributionPerMonth)}.`}
-      tableRows={tableRows}
-      tableHeaders={["Price", "Orders and earnings per month"]}
-    >
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-labelledby={`${id}-t ${id}-d`}>
-        <title id={`${id}-t`}>Price against orders and monthly earnings</title>
-        <desc id={`${id}-d`}>
-          As price rises orders fall. Earnings peak at {inr(peak.price)} —{" "}
-          {inr(peak.contributionPerMonth)} a month — then fall away above the visibility ceiling of{" "}
-          {inr(ceiling)}.
-        </desc>
-
-        {/* Axes */}
-        <line x1={PAD_L} y1={H - PAD_B} x2={W - PAD_R} y2={H - PAD_B} stroke="var(--border-strong)" />
-        <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} stroke="var(--border-strong)" />
-        <line x1={W - PAD_R} y1={PAD_T} x2={W - PAD_R} y2={H - PAD_B} stroke="var(--border-strong)" />
-
-        {/* Zero contribution line — below it she is paying to sell. */}
-        {minC < 0 ? (
-          <line x1={PAD_L} y1={zeroY} x2={W - PAD_R} y2={zeroY} stroke="var(--danger)" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
-        ) : null}
-
-        {/* The band, shaded */}
-        {ceiling > floor ? (
-          <rect
-            x={x(Math.max(floor, minP))}
-            y={PAD_T}
-            width={Math.max(0, x(Math.min(ceiling, maxP)) - x(Math.max(floor, minP)))}
-            height={H - PAD_T - PAD_B}
-            fill="var(--success)"
-            opacity="0.06"
-          />
-        ) : null}
-
-        {rules.map((r) => (
-          <g key={r.label}>
-            <line x1={x(r.value)} y1={PAD_T} x2={x(r.value)} y2={H - PAD_B} stroke={r.colour} strokeWidth="1.5" strokeDasharray="4 3" opacity="0.7" />
-            <text x={x(r.value)} y={PAD_T - 6} textAnchor="middle" className="hi" fill={r.colour} fontSize="9.5">
+      description={`Earnings peak at ${inr(peak.price)}, where about ${peak.ordersPerMonth.toFixed(0)} orders a month bring in ${inr(peak.contributionPerMonth)}.`}
+      tableRows={points
+        .filter((_, i) => i % Math.ceil(points.length / 8) === 0)
+        .map((p) => ({ label: inr(p.price), value: `${p.ordersPerMonth.toFixed(0)} orders · ${inr(p.contributionPerMonth)}` }))}
+      tableHeaders={["Price", "Orders and earnings a month"]}
+      footer={
+        <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-[var(--text-muted)]">
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className="h-[3px] w-4 rounded-full bg-[var(--success)]" /> Earnings ₹ / month
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className="h-0 w-4 border-t-2 border-dashed border-[var(--neutral-data)]" /> Orders / month
+          </li>
+          {rules.map((r) => (
+            <li key={r.key} className="hi flex items-center gap-1.5">
+              <span aria-hidden className="h-3 w-0 border-l-2" style={{ borderColor: r.colour, borderLeftStyle: r.dash === "0" ? "solid" : "dashed" }} />
               {r.label}
+            </li>
+          ))}
+        </ul>
+      }
+    >
+      <div ref={ref}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block max-w-full" role="img" aria-labelledby={`${id}-t ${id}-d`}>
+          <title id={`${id}-t`}>Price against orders and monthly earnings</title>
+          <desc id={`${id}-d`}>
+            Earnings peak at {inr(peak.price)} — {inr(peak.contributionPerMonth)} a month — and fall away above the
+            ceiling of {inr(ceiling)}.
+          </desc>
+
+          {/* Band */}
+          {ceiling > floor ? (
+            <rect
+              x={x(Math.max(floor, minP))}
+              y={PAD_T}
+              width={Math.max(0, x(Math.min(ceiling, maxP)) - x(Math.max(floor, minP)))}
+              height={plotH}
+              fill="var(--success-bg)"
+            />
+          ) : null}
+
+          {/* Grid */}
+          {[0, 0.5, 1].map((f) => (
+            <line key={f} x1={PAD_L} x2={W - PAD_R} y1={PAD_T + plotH * f} y2={PAD_T + plotH * f} stroke="var(--border)" />
+          ))}
+          {minC < 0 ? <line x1={PAD_L} x2={W - PAD_R} y1={zeroY} y2={zeroY} stroke="var(--danger)" strokeOpacity="0.45" strokeDasharray="3 3" /> : null}
+
+          {rules.map((r) => (
+            <line key={r.key} x1={x(r.value)} x2={x(r.value)} y1={PAD_T} y2={PAD_T + plotH} stroke={r.colour} strokeWidth="1.5" strokeDasharray={r.dash === "0" ? undefined : r.dash} strokeOpacity="0.85" />
+          ))}
+
+          <path d={areaPath} fill="var(--success)" fillOpacity="0.08" />
+          <path d={ordersPath} fill="none" stroke="var(--neutral-data)" strokeWidth="1.75" strokeDasharray="5 4" />
+          <path d={contribPath} fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinejoin="round" />
+
+          <circle cx={x(peak.price)} cy={yC(peak.contributionPerMonth)} r="5" fill="var(--success)" stroke="var(--surface)" strokeWidth="2.5" />
+          <text
+            x={Math.min(W - PAD_R - 4, Math.max(PAD_L + 4, x(peak.price)))}
+            y={Math.max(PAD_T + 12, yC(peak.contributionPerMonth) - 10)}
+            textAnchor="middle"
+            fill="var(--success)"
+            fontSize="12"
+            fontWeight="650"
+          >
+            {inr(peak.contributionPerMonth)} at {inr(peak.price)}
+          </text>
+
+          {/* Axes */}
+          <text x={PAD_L - 8} y={PAD_T + 4} textAnchor="end" fill="var(--text-subtle)" fontSize="11">{maxOrders.toFixed(0)}</text>
+          <text x={PAD_L - 8} y={PAD_T + plotH + 4} textAnchor="end" fill="var(--text-subtle)" fontSize="11">0</text>
+          <text x={W - PAD_R + 8} y={PAD_T + 4} fill="var(--success)" fontSize="11">{inrCompact(maxC)}</text>
+          {minC < 0 ? <text x={W - PAD_R + 8} y={zeroY + 4} fill="var(--success)" fontSize="11">₹0</text> : null}
+          {xTicks.map((t) => (
+            <text key={t} x={x(t)} y={H - 12} textAnchor="middle" fill="var(--text-subtle)" fontSize="11">
+              {inr(t)}
             </text>
-          </g>
-        ))}
-
-        {/* Orders: the quieter of the two series. */}
-        <path d={ordersPath} fill="none" stroke="var(--neutral-data)" strokeWidth="2" strokeDasharray="5 3" />
-
-        {/* Contribution: the one the seller is here for. */}
-        <path d={contribPath} fill="none" stroke="var(--success)" strokeWidth="2.5" />
-
-        {/* The peak */}
-        <circle cx={x(peak.price)} cy={yContrib(peak.contributionPerMonth)} r="5" fill="var(--success)" stroke="var(--surface)" strokeWidth="2" />
-        <text
-          x={x(peak.price)}
-          y={yContrib(peak.contributionPerMonth) - 10}
-          textAnchor="middle"
-          className="tabular"
-          fill="var(--success)"
-          fontSize="11"
-          fontWeight="700"
-        >
-          {inr(peak.contributionPerMonth)}/mo
-        </text>
-
-        {/* Axis labels */}
-        <text x={PAD_L - 8} y={PAD_T + 8} textAnchor="end" fill="var(--neutral-data)" fontSize="9.5">
-          {maxOrders.toFixed(0)}
-        </text>
-        <text x={PAD_L - 8} y={H - PAD_B} textAnchor="end" fill="var(--neutral-data)" fontSize="9.5">
-          0
-        </text>
-        <text x={12} y={H / 2} fill="var(--neutral-data)" fontSize="10" transform={`rotate(-90 12 ${H / 2})`} textAnchor="middle">
-          orders / month
-        </text>
-
-        <text x={W - PAD_R + 8} y={PAD_T + 8} fill="var(--success)" fontSize="9.5" className="tabular">
-          {inrCompact(maxC)}
-        </text>
-        <text x={W - PAD_R + 8} y={zeroY + 3} fill="var(--success)" fontSize="9.5" className="tabular">
-          ₹0
-        </text>
-        <text
-          x={W - 10}
-          y={H / 2}
-          fill="var(--success)"
-          fontSize="10"
-          transform={`rotate(90 ${W - 10} ${H / 2})`}
-          textAnchor="middle"
-        >
-          earnings ₹ / month
-        </text>
-
-        <text x={(W - PAD_R + PAD_L) / 2} y={H - 10} textAnchor="middle" fill="var(--text-muted)" fontSize="10">
-          your price (₹)
-        </text>
-        <text x={PAD_L} y={H - PAD_B + 16} textAnchor="middle" className="tabular" fill="var(--text-subtle)" fontSize="9.5">
-          {inr(minP)}
-        </text>
-        <text x={W - PAD_R} y={H - PAD_B + 16} textAnchor="middle" className="tabular" fill="var(--text-subtle)" fontSize="9.5">
-          {inr(maxP)}
-        </text>
-      </svg>
-
-      <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">
-        The dashed grey line is orders; the solid green line is what you actually keep. More orders
-        is not more money — earnings peak at <strong>{inr(peak.price)}</strong>, inside your band.
-      </p>
+          ))}
+        </svg>
+      </div>
     </ChartFrame>
   );
 }

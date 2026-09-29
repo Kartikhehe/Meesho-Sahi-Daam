@@ -20,6 +20,7 @@ import { useWorld } from "@/lib/use-seller";
 import { useAudit } from "@/lib/audit";
 import { count, pct } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 const PILOT_CITIES = ["Surat", "Tirupur", "Kanpur"];
 
@@ -75,16 +76,11 @@ export default function RolloutPage() {
   }, [world]);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          A4
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Rollout</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Who sees the tool, and who is in the control group
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Rollout"
+        description={<>Who sees the tool, and who is in the control group</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
@@ -226,6 +222,6 @@ export default function RolloutPage() {
           </Card>
         </div>
       </StateGate>
-    </div>
+    </Page>
   );
 }

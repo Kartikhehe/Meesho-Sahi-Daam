@@ -21,6 +21,7 @@ import { useWorld } from "@/lib/use-seller";
 import { useAudit } from "@/lib/audit";
 import { ALERT_CAP_PER_WEEK, BUYER_PRICE_INDEX_GATE } from "@/engine/constants";
 import { count } from "@/lib/format";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 export default function GuardrailsPage() {
   const { world, status, error } = useWorld();
@@ -73,16 +74,11 @@ export default function GuardrailsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          A3
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Guardrails</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          The four limits that stop this tool doing harm at scale
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Guardrails"
+        description={<>The four limits that stop this tool doing harm at scale</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         {killed ? (
@@ -97,7 +93,7 @@ export default function GuardrailsPage() {
         ) : null}
 
         {/* 1 — Buyer Price Index */}
-        <Card className={`mb-4 border-l-[3px] p-4 ${breached ? "border-l-[var(--danger)]" : "border-l-[var(--success)]"}`}>
+        <Card tone={breached ? "danger" : "default"} className="mb-4 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <h2 className="text-[14px] font-semibold text-[var(--text)]">Buyer Price Index</h2>
@@ -208,7 +204,7 @@ export default function GuardrailsPage() {
         </Card>
 
         {/* 4 — Kill switch */}
-        <Card className="border-l-[3px] border-l-[var(--danger)] p-4">
+        <Card className="p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <h2 className="text-[14px] font-semibold text-[var(--text)]">Global kill switch</h2>
@@ -266,7 +262,7 @@ export default function GuardrailsPage() {
           )}
         </Card>
       </StateGate>
-    </div>
+    </Page>
   );
 }
 

@@ -22,6 +22,7 @@ import { useWorld } from "@/lib/use-seller";
 import { useAudit } from "@/lib/audit";
 import { costInputsFor } from "@/engine/clock";
 import { survivalPrice } from "@/engine/cost";
+import { Page, PageHeader } from "@/components/shared/page-header";
 import {
   AD_SPEND_RATE_DEFAULT,
   GST_ON_FEES,
@@ -227,18 +228,11 @@ export default function EngineConfigPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          A1
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Engine configuration</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          The inputs behind every survival price. Changing one changes what sellers are told about
-          their own businesses, so every change shows its blast radius and is written to the audit
-          log.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Engine configuration"
+        description={<>The inputs behind every survival price. Changing one changes what sellers are told about their own businesses, so every change shows its blast radius and is written to the audit log.</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         {applied ? (
@@ -259,7 +253,7 @@ export default function EngineConfigPage() {
         ) : null}
 
         {radius ? (
-          <Card className="sticky top-16 z-20 mb-4 border-l-[3px] border-l-[var(--warning)] p-4">
+          <Card tone="warning" className="sticky top-16 z-20 mb-4 p-4 shadow-[var(--shadow-pop)]">
             <div className="flex items-start gap-2">
               <AlertTriangle size={16} aria-hidden className="mt-0.5 shrink-0 text-[var(--warning)]" />
               <div className="min-w-0 flex-1">
@@ -336,6 +330,6 @@ export default function EngineConfigPage() {
           worth demonstrating, and all three are real.
         </p>
       </StateGate>
-    </div>
+    </Page>
   );
 }

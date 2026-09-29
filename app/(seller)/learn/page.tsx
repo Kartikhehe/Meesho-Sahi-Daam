@@ -15,6 +15,7 @@ import { GLOSSARY, type GlossaryEntry } from "@/content/glossary";
 import { GST_ON_FEES, ELASTICITY_BY_CATEGORY } from "@/engine/constants";
 import { inr, pct } from "@/lib/format";
 import type { ListingAnalysis } from "@/lib/selectors";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 /** Her own figure for a term — averaged across her catalogue where needed. */
 function yoursFor(entry: GlossaryEntry, analyses: ListingAnalysis[]): { value: string; note: string } | null {
@@ -77,14 +78,12 @@ export default function LearnPage() {
   const { analyses, status, error } = useSeller();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-5 md:px-6">
-      <header className="mb-5">
-        <h1 className="hi text-2xl font-semibold text-[var(--text)]">सीखें</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          The words that decide whether a sale makes you money — each in one plain sentence, with
-          your own numbers beside it
-        </p>
-      </header>
+    <Page width="narrow">
+      <PageHeader
+        titleHi="सीखें"
+        title="Learn"
+        description="The words that decide whether a sale makes you money — each in one plain sentence, with your own numbers beside it."
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         <ul className="space-y-3">
@@ -124,6 +123,6 @@ export default function LearnPage() {
           })}
         </ul>
       </StateGate>
-    </div>
+    </Page>
   );
 }

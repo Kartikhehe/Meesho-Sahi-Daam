@@ -17,6 +17,7 @@ import { cn } from "@/lib/cn";
 import { inr, inrSigned, pct, count as fmtCount } from "@/lib/format";
 import type { Traced } from "@/engine/trace";
 import { TraceDrawer } from "./trace-drawer";
+import { Amount } from "./amount";
 
 type Props = {
   value: number;
@@ -34,10 +35,10 @@ type Props = {
 };
 
 const SIZES = {
-  sm: "text-[12px]",
-  md: "text-sm",
+  sm: "text-[13px] font-medium",
+  md: "text-sm font-semibold",
   lg: "text-lg font-semibold",
-  xl: "text-[32px] leading-none font-semibold",
+  xl: "type-figure",
 };
 
 export function MoneyValue({
@@ -74,8 +75,24 @@ export function MoneyValue({
             : "text-[var(--success)]"
           : "text-[var(--text)]";
 
+  // Rupee figures are typeset by <Amount> so a traceable number looks exactly
+  // like every other rupee figure in the product — only the dotted underline
+  // tells you it opens.
+  const isMoney = format === "inr" || format === "inrSigned";
+  const AMOUNT_SIZE = { sm: "sm", md: "md", lg: "lg", xl: "figure" } as const;
+  const body = isMoney ? (
+    <Amount
+      value={value}
+      size={AMOUNT_SIZE[size]}
+      decimals={decimals}
+      signed={format === "inrSigned"}
+    />
+  ) : (
+    text
+  );
+
   if (!traced) {
-    return <span className={cn("tabular", SIZES[size], toneClass, className)}>{text}</span>;
+    return <span className={cn("tabular", SIZES[size], toneClass, className)}>{body}</span>;
   }
 
   return (
@@ -85,14 +102,14 @@ export function MoneyValue({
         onClick={() => setOpen(true)}
         title="See how this is worked out"
         className={cn(
-          "tabular inline-flex items-baseline gap-1 rounded-sm underline decoration-dotted decoration-[var(--text-subtle)] underline-offset-4",
-          "hover:decoration-[var(--brand-magenta)] hover:decoration-solid",
+          "tabular inline rounded-sm underline decoration-dotted decoration-[1.5px] decoration-[color-mix(in_srgb,currentColor_45%,transparent)] underline-offset-[5px]",
+          "transition-colors hover:decoration-[var(--brand-magenta)] hover:decoration-solid",
           SIZES[size],
           toneClass,
           className,
         )}
       >
-        {text}
+        {body}
       </button>
       <TraceDrawer
         open={open}

@@ -21,6 +21,7 @@ import { cohortHealth, clusterHealth, type SellerHealth } from "@/lib/cohort";
 import { analyseSeller } from "@/lib/selectors";
 import { inr, count, pct } from "@/lib/format";
 import type { World } from "@/engine/types";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 type ReasonCode =
   | "STRUCTURAL_NO_BAND"
@@ -93,16 +94,11 @@ export default function QueuePage() {
   const queue = useMemo(() => (world ? buildQueue(world, health) : []), [world, health]);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          M5
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Intervention queue</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Sellers a price recommendation cannot help. These need a person.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Intervention queue"
+        description={<>Sellers a price recommendation cannot help. These need a person.</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-80 w-full" />}>
         {queue.length === 0 ? (
@@ -171,6 +167,6 @@ export default function QueuePage() {
           </ul>
         )}
       </StateGate>
-    </div>
+    </Page>
   );
 }

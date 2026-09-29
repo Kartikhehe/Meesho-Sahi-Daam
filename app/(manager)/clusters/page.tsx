@@ -11,7 +11,6 @@
  */
 
 import { useMemo } from "react";
-import { Card } from "@/components/ui/card";
 import { MetricCard } from "@/components/shared/metric-card";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { StatusChip } from "@/components/shared/status-chip";
@@ -19,6 +18,8 @@ import { Skeleton, StateGate } from "@/components/shared/empty-state";
 import { useWorld } from "@/lib/use-seller";
 import { clusterHealth, type ClusterHealth } from "@/lib/cohort";
 import { inr, count, pct } from "@/lib/format";
+import { Page, PageHeader } from "@/components/shared/page-header";
+import { Callout } from "@/components/shared/callout";
 
 export default function ClustersPage() {
   const { world, status, error } = useWorld();
@@ -98,18 +99,11 @@ export default function ClustersPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          M3
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">
-          Category and cluster health
-        </h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Which designs a typical seller can actually make money on — and which ones no seller can
-        </p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        title="Category and cluster health"
+        description={<>Which designs a typical seller can actually make money on — and which ones no seller can</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
@@ -149,17 +143,14 @@ export default function ClustersPage() {
         </div>
 
         {broken.length > 0 ? (
-          <Card className="mb-4 border-l-[3px] border-l-[var(--danger)] p-4">
-            <h2 className="text-[13px] font-semibold text-[var(--text)]">
-              This is a cost-structure finding, not a seller-education one
-            </h2>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-muted)]">
+          <Callout tone="danger" title="This is a cost-structure finding, not a seller-education one" className="mb-4">
+<p>
               In {count(broken.length)} designs the median seller&rsquo;s cost to serve already sits
               above what buyers will pay to find her. Teaching those sellers to price better cannot
               work, because there is no price that works. What would move these is freight rates,
               return rates, or the ad load — levers the marketplace holds, not the seller.
             </p>
-          </Card>
+</Callout>
         ) : null}
 
         <DataTable
@@ -172,6 +163,6 @@ export default function ClustersPage() {
           caption="Design clusters ranked by how much room the median seller has"
         />
       </StateGate>
-    </div>
+    </Page>
   );
 }

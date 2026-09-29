@@ -20,6 +20,7 @@ import { ordersFor, settlementsFor, summariseSettlements } from "@/lib/selectors
 import { inr, count, formatDateShort, pct } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { SettlementLine, OrderOutcome } from "@/engine/types";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 type Filter = "all" | "delivered" | "rto" | "returned";
 
@@ -146,13 +147,12 @@ export default function SettlementsPage() {
   const paidPct = summary.dispatched > 0 ? summary.paid / summary.dispatched : 0;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <h1 className="hi text-2xl font-semibold text-[var(--text)]">पैसा मिला</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          Settlement explorer — every parcel you shipped in the last 30 days, and what it paid
-        </p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        titleHi="पैसा मिला"
+        title="Settlements"
+        description="Every parcel you shipped in the last 30 days, and exactly what it paid you."
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         {settlements.length === 0 ? (
@@ -243,6 +243,6 @@ export default function SettlementsPage() {
           </>
         )}
       </StateGate>
-    </div>
+    </Page>
   );
 }

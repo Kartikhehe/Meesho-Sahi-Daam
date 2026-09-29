@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * Shared chart chrome: accessible title/description, a "view as table" toggle,
- * and an empty state. Every chart in the product wears this, so the
- * accessibility guarantees are structural rather than per-chart discipline.
+ * Shared chart chrome: an accessible title, a "view as table" text
+ * alternative, a footer slot for legends, and an empty state. Every chart in
+ * the product wears this, so the accessibility guarantees are structural
+ * rather than per-chart discipline.
  */
 
-import { useId, useState, type ReactNode } from "react";
-import { Table2, BarChart3 } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { BarChart3, Table2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -17,7 +18,6 @@ export function ChartFrame({
   title,
   titleHi,
   description,
-  /** Rows shown by the "view as table" toggle — the chart's text alternative. */
   tableRows,
   tableHeaders = ["", "Value"],
   isEmpty,
@@ -40,34 +40,37 @@ export function ChartFrame({
   className?: string;
 }) {
   const [asTable, setAsTable] = useState(false);
-  const id = useId();
+  const hasTitle = !!(title || titleHi);
+
+  const toggle = !isEmpty ? (
+    <button
+      type="button"
+      onClick={() => setAsTable((v) => !v)}
+      aria-pressed={asTable}
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--radius-input)] px-2 text-[12px] font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-sunken)] hover:text-[var(--text)]"
+    >
+      {asTable ? <BarChart3 size={14} aria-hidden /> : <Table2 size={14} aria-hidden />}
+      <span className="hidden sm:inline">{asTable ? "Chart" : "Table"}</span>
+      <span className="sr-only sm:hidden">{asTable ? "View as chart" : "View as table"}</span>
+    </button>
+  ) : null;
 
   return (
-    <figure className={cn("m-0", className)}>
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <figcaption className="min-w-0">
-          {titleHi ? (
-            <p className="hi text-sm font-semibold text-[var(--text)]">{titleHi}</p>
-          ) : null}
-          <p
-            className={cn(
-              titleHi ? "text-[12px] text-[var(--text-muted)]" : "text-sm font-semibold text-[var(--text)]",
-            )}
-          >
-            {title}
-          </p>
-        </figcaption>
-        {!isEmpty ? (
-          <button
-            type="button"
-            onClick={() => setAsTable((v) => !v)}
-            aria-pressed={asTable}
-            className="inline-flex shrink-0 items-center gap-1 rounded-[var(--radius-input)] border border-[var(--border)] px-2 py-1 text-[11px] font-medium text-[var(--text-muted)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text)]"
-          >
-            {asTable ? <BarChart3 size={12} aria-hidden /> : <Table2 size={12} aria-hidden />}
-            {asTable ? "View as chart" : "View as table"}
-          </button>
-        ) : null}
+    <figure className={cn("m-0 min-w-0", className)}>
+      <div className={cn("flex items-start justify-between gap-3", hasTitle ? "mb-3" : "mb-1")}>
+        {hasTitle ? (
+          <figcaption className="min-w-0">
+            {titleHi ? <p className="hi type-h3 text-[var(--text)]">{titleHi}</p> : null}
+            {title ? (
+              <p className={titleHi ? "type-caption text-[var(--text-subtle)]" : "type-h3 text-[var(--text)]"}>
+                {title}
+              </p>
+            ) : null}
+          </figcaption>
+        ) : (
+          <figcaption className="sr-only">{description}</figcaption>
+        )}
+        <div className={hasTitle ? "" : "ml-auto"}>{toggle}</div>
       </div>
 
       {isEmpty ? (
@@ -76,37 +79,37 @@ export function ChartFrame({
           description={emptyDescription ?? "This fills in once you have orders."}
         />
       ) : asTable ? (
-        <table className="w-full text-left text-[13px]">
-          <caption className="sr-only">{description}</caption>
-          <thead>
-            <tr className="border-b border-[var(--border)]">
-              <th scope="col" className="py-1.5 font-semibold text-[var(--text-muted)]">
-                {tableHeaders[0]}
-              </th>
-              <th scope="col" className="py-1.5 text-right font-semibold text-[var(--text-muted)]">
-                {tableHeaders[1]}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {tableRows.map((r) => (
-              <tr key={r.label} className="border-b border-[var(--border)] last:border-0">
-                <td className="py-1.5 text-[var(--text)]">
-                  {r.label}
-                  {r.note ? (
-                    <span className="block text-[11px] text-[var(--text-subtle)]">{r.note}</span>
-                  ) : null}
-                </td>
-                <td className="tabular py-1.5 text-right font-medium text-[var(--text)]">{r.value}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[13px]">
+            <caption className="sr-only">{description}</caption>
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th scope="col" className="py-2 pr-3 font-medium text-[var(--text-subtle)]">
+                  {tableHeaders[0]}
+                </th>
+                <th scope="col" className="py-2 text-right font-medium text-[var(--text-subtle)]">
+                  {tableHeaders[1]}
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tableRows.map((r) => (
+                <tr key={r.label} className="border-b border-[var(--border)] last:border-0">
+                  <td className="py-2 pr-3 text-[var(--text)]">
+                    {r.label}
+                    {r.note ? <span className="block text-[12px] text-[var(--text-subtle)]">{r.note}</span> : null}
+                  </td>
+                  <td className="tabular py-2 text-right font-medium text-[var(--text)]">{r.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
-        <div id={id}>{children}</div>
+        children
       )}
 
-      {footer ? <div className="mt-2">{footer}</div> : null}
+      {footer && !asTable && !isEmpty ? <div className="mt-3">{footer}</div> : null}
     </figure>
   );
 }

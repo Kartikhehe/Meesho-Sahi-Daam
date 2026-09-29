@@ -23,6 +23,7 @@ import { useAudit } from "@/lib/audit";
 import { cohortHealth, type SellerHealth } from "@/lib/cohort";
 import { analyseSeller } from "@/lib/selectors";
 import { inr, count, pct, formatDateShort } from "@/lib/format";
+import { Page, PageHeader } from "@/components/shared/page-header";
 
 const ADOPTION_COPY = {
   active: { label: "Acting on alerts", tone: "success" as const },
@@ -158,17 +159,11 @@ function SellersInner() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <span className="rounded-[var(--radius-chip)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
-          M2
-        </span>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text)]">Sellers</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Ranked by risk. Opening a seller shows her cost detail for a support case, and is written
-          to the audit log.
-        </p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        title="Sellers"
+        description={<>Ranked by risk. Opening a seller shows her cost detail for a support case, and is written to the audit log.</>}
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         {focused && world ? (
@@ -186,7 +181,7 @@ function SellersInner() {
           />
         )}
       </StateGate>
-    </div>
+    </Page>
   );
 }
 

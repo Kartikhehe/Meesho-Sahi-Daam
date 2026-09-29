@@ -10,10 +10,15 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check } from "lucide-react";
+import Link from "next/link";
+import { Check, Plus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/shared/data-table";
+import { FilterPills } from "@/components/shared/filter-pills";
+import { PageHeader, Page } from "@/components/shared/page-header";
+import { ProductTile } from "@/components/shared/product-tile";
+import { CatalogueCard } from "@/components/catalogue/catalogue-card";
 import { MoneyValue } from "@/components/shared/money-value";
 import { BandChip, ScoreChip, StageChip } from "@/components/shared/status-chip";
 import { EmptyState, Skeleton, StateGate } from "@/components/shared/empty-state";
@@ -21,7 +26,6 @@ import { useSeller } from "@/lib/use-seller";
 import { useWorldStore } from "@/lib/store/world-store";
 import type { ListingAnalysis } from "@/lib/selectors";
 import { inr, count } from "@/lib/format";
-import { cn } from "@/lib/cn";
 
 type Filter = "all" | "below-floor" | "no-band" | "above-gate" | "healthy";
 
@@ -103,9 +107,12 @@ function CatalogueInner() {
       headerHi: "सामान",
       sortValue: (a) => a.listing.name,
       render: (a) => (
-        <div className="min-w-0">
-          <p className="truncate font-medium text-[var(--text)]">{a.listing.name}</p>
-          <p className="text-[11px] text-[var(--text-subtle)]">{a.listing.category}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <ProductTile category={a.listing.category} colour={a.listing.attributes.colourFamily} />
+          <div className="min-w-0">
+            <p className="max-w-[240px] truncate font-medium text-[var(--text)]">{a.listing.name}</p>
+            <p className="text-[12px] text-[var(--text-subtle)]">{a.listing.category.replace(/-/g, " ")}</p>
+          </div>
         </div>
       ),
     },
@@ -154,7 +161,7 @@ function CatalogueInner() {
       key: "band",
       header: "Band",
       sortValue: (a) => a.band.value.verdict,
-      render: (a) => <BandChip verdict={a.band.value.verdict} />,
+      render: (a) => <BandChip verdict={a.band.value.verdict} lang="hi" />,
     },
     {
       key: "perOrder",
@@ -199,14 +206,20 @@ function CatalogueInner() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-5 md:px-6">
-      <header className="mb-4">
-        <h1 className="hi text-2xl font-semibold text-[var(--text)]">मेरा सामान</h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          My catalogue — {count(summary.listingCount)} listings,{" "}
-          {count(summary.belowFloorCount + summary.noBandCount)} needing attention
-        </p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        titleHi="मेरा सामान"
+        title="My catalogue"
+        description={`${count(summary.listingCount)} listings — ${count(summary.belowFloorCount + summary.noBandCount)} are priced below what they cost you to ship.`}
+        actions={
+          <Link href="/new-listing">
+            <Button variant="secondary">
+              <Plus size={16} aria-hidden />
+              <span className="hi">नया सामान</span>
+            </Button>
+          </Link>
+        }
+      />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
         {analyses.length === 0 ? (
@@ -216,30 +229,16 @@ function CatalogueInner() {
           />
         ) : (
           <>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              {FILTERS.map((f) => {
-                const n = analyses.filter((a) => matches(a, f.key)).length;
-                return (
-                  <button
-                    key={f.key}
-                    type="button"
-                    onClick={() => {
-                      setFilter(f.key);
-                      router.replace(f.key === "all" ? "/catalogue" : `/catalogue?filter=${f.key}`);
-                    }}
-                    className={cn(
-                      "rounded-[var(--radius-chip)] border px-3 py-1.5 text-[12px] font-medium",
-                      filter === f.key
-                        ? "border-[var(--brand-magenta)] bg-[var(--brand-magenta-50)] text-[var(--text)]"
-                        : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-sunken)]",
-                    )}
-                  >
-                    <span className="hi">{f.labelHi}</span>
-                    <span className="tabular ml-1.5 text-[var(--text-subtle)]">{n}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <FilterPills
+              className="mb-4"
+              label="Filter listings"
+              value={filter}
+              onChange={(key) => {
+                setFilter(key);
+                router.replace(key === "all" ? "/catalogue" : `/catalogue?filter=${key}`);
+              }}
+              pills={FILTERS.map((f) => ({ ...f, count: analyses.filter((a) => matches(a, f.key)).length }))}
+            />
 
             {selected.size > 0 ? (
               <Card className="mb-3 flex flex-wrap items-center gap-3 p-3">
@@ -294,11 +293,12 @@ function CatalogueInner() {
               emptyTitle="Nothing matches this filter"
               emptyDescription="Try another filter, or clear it to see your whole catalogue."
               caption="Your listings with their survival price, ceiling and what each earns"
+              mobileCard={(a) => <CatalogueCard a={a} />}
             />
           </>
         )}
       </StateGate>
-    </div>
+    </Page>
   );
 }
 

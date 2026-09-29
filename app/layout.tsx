@@ -1,18 +1,19 @@
 import type { Metadata, Viewport } from "next";
+// Self-hosted variable fonts, bundled from node_modules at build time — so the
+// app still runs with the network off. Each package splits its faces by
+// unicode-range, so a page only downloads the scripts it actually renders.
+//
+// Plus Jakarta Sans: a geometric-humanist sans close in spirit to Meesho's
+// proprietary Mier, with real tabular figures and a ₹ glyph in its latin-ext
+// subset. Noto Sans Devanagari: the most complete, most even Devanagari face
+// available, with a weight axis wide enough to match the Latin at every step.
+import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/noto-sans-devanagari";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
 
-/**
- * Fonts: the design calls for Inter + Noto Sans Devanagari. We do NOT use
- * next/font/google here — that fetches at build time, and this prototype must
- * build and run on a laptop with no internet. The CSS font stack falls back to
- * the platform UI font, and Devanagari falls back to the system Devanagari
- * face, which every Android and macOS ships. Drop the woff2 files into
- * /public/fonts and switch to next/font/local to pin the exact faces.
- */
-
 export const metadata: Metadata = {
-  title: "Sahi Daam — a price that lets you survive",
+  title: "Sahi Daam — the price that lets you survive",
   description:
     "A price operating system for new-to-online Meesho sellers: the survival floor, the visibility ceiling, and the maths behind both.",
 };
@@ -26,7 +27,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
+      <body>
         <AppShell>{children}</AppShell>
       </body>
     </html>
