@@ -2,7 +2,7 @@
 
 **This file is the resume point.** If the session ends, read this file alone to pick up correctly.
 
-Last updated: Phase 1 complete and committed.
+Last updated: Phase 2 complete and committed.
 
 ---
 
@@ -10,15 +10,16 @@ Last updated: Phase 1 complete and committed.
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 2 — The engine, headless |
-| **Next file to touch** | `engine/rng.ts` (seeded RNG), then `engine/ceiling.ts` |
+| **Phase in progress** | Phase 3 — World generation + persistence |
+| **Next file to touch** | `scripts/generate-world.ts`, then `lib/store/world-store.ts` |
 | **Known breakage** | None |
-| **Build status** | `npm run build` clean — 24 routes, 0 TS errors, 0 ESLint errors |
+| **Build status** | `npm run build` clean; `npx tsx scripts/verify.ts` → 42/42 checks pass |
 
-**Phase 2 started early.** `engine/trace.ts`, `engine/constants.ts` and `engine/cost.ts` are
-written and the cost solver is verified against the reference cases (see the calibration note
-below). Still to write: rng, money, ceiling, band, waterfall, demand, twins, bandit, triggers/,
-lifecycle, clock, score, and `scripts/verify.ts`.
+**Phase 3 partly done already.** The world generator exists (`data/generator/`: personas,
+clusters, listings, world) and produces 6 sellers, 60 clusters, 355 seller listings and ~1,900
+competitors deterministically from seed 230540. Still to do: write `/data/world.json`, the
+Zustand store with localStorage persistence, the CSV import adapter + sample file, and the two
+Admin screens (A5 Simulation Control, A6 Data Provenance).
 
 ---
 
@@ -30,7 +31,7 @@ lifecycle, clock, score, and `scripts/verify.ts`.
       title. Error boundary + not-found.
       *Gate: every nav item clicks; nothing 404s or white-screens.*
 
-- [ ] **Phase 2 — The engine, headless**
+- [x] **Phase 2 — The engine, headless** ✅ committed — 42/42 verify checks pass
       `/engine` complete + unit-tested, no UI: types, constants with sources, seeded RNG,
       cost-to-serve solver with traces, ceiling estimator, band classifier, demand model, twin
       retriever, bandit, six triggers, lifecycle machine, clock. `scripts/verify.ts`.
@@ -85,10 +86,34 @@ lifecycle, clock, score, and `scripts/verify.ts`.
 | Phase 1 | No `next/font/google`; CSS font stack with system fallback | `next/font/google` fetches at build time, which breaks the no-network constraint. Drop woff2 files into `/public/fonts` and switch to `next/font/local` to pin Inter + Noto Sans Devanagari exactly. |
 | Phase 1 | `outputFileTracingRoot` pinned to the project | An unrelated `package-lock.json` in the home directory made Next infer the wrong workspace root. |
 | Phase 2 | COGS write-down applies to **all** failed parcels, not customer returns only | See the calibration note below. |
+| Phase 2 | Ceiling anchors on `max(winningPrice, prevailingPrice × 0.94)` | The brief defines the winning price as the highest-order-share listing. Under a price softmax that is always the cheapest listing, which in a cluster with a rock-bottom outlier sits well below where the market trades — dragging the ceiling under the median rival and making almost every seller look unviable. Blending in the order-weighted median fixes that while still reproducing the brief's ₹329 → ₹352 fixture exactly. |
+| Phase 2 | Listing COGS anchored at 30-40% of the cluster median price | The survival price lands at ~2.25× COGS once every leakage is counted, so COGS at half of market price mathematically guarantees no viable band. Sourcing at ~a third of retail is what makes marketplace selling work at all. |
+| Phase 2 | Parcel weight scales with the cluster's price level | Freight is charged by slab, so an 800g parcel on a ₹200 kurti is most of the cost to serve. Real sellers in cheap clusters ship light. |
 
 ---
 
 ## Ambiguities resolved (chose the more honest / more inspectable option)
+
+### Archetype calibration — the failures emerge, they are not written
+
+`grep -rniE "imran|suresh|rekha" engine/` returns only a comment explaining why no such branch
+exists. Each persona is defined purely by behavioural parameters (COD share, ad rate, and a
+pricing *rule* like "undercut the prevailing price by ₹6"). The outcomes below are what the
+demand and cost models then produce, at day 60 of simulated history:
+
+| Seller | Listings | Below floor | Above gate | Orders/mo | Contribution/mo |
+|---|---|---|---|---|---|
+| Suresh (Shopkeeper) | 62 | 0 | **43** | **205** | +₹9,206 |
+| Imran (Matcher) | 78 | **37** | 0 | 2,129 | **−₹54,371** |
+| Rekha (Set-and-forget) | 54 | **35** | 0 | 1,216 | −₹21,795 |
+| Anita (healthy control) | 71 | 0 | 3 | 1,017 | **+₹22,114** |
+| Farida (cold start) | 0 | — | — | — | — |
+| Vikram (mixed) | 90 | 18 | 1 | 2,452 | −₹77,398 |
+
+Suresh's 43 above-gate listings take only ~205 orders a month between them — roughly 2 each. He
+dies unseen, which is exactly the visibility-gate failure, and the four listings he happens to
+have priced inside the band are what keep him marginally positive. Imran lands at −₹54k against
+the brief's ~−₹47.5k target, from undercutting alone.
 
 ### Calibration of the survival-price formula against the brief's reference cases
 

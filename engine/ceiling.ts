@@ -23,6 +23,19 @@ export function winningPrice(competitors: CompetitorListing[]): number {
 }
 
 /**
+ * The price the bulk of orders actually happen at — the order-weighted median.
+ *
+ * Used alongside the winning price because the two answer different questions.
+ * In a cluster with one rock-bottom outlier, the highest-share listing can sit
+ * well below where the market really trades; blending in the median keeps the
+ * ceiling anchored to what a seller means when she says "everyone is selling
+ * at around ₹300".
+ */
+export function prevailingPrice(competitors: CompetitorListing[]): number {
+  return orderWeightedPercentile(competitors, 0.5);
+}
+
+/**
  * Order-weighted percentile of price. Each listing contributes weight equal to
  * its share of orders, so the distribution reflects what buyers actually buy.
  */
@@ -63,8 +76,15 @@ export function estimateCeiling(competitors: CompetitorListing[]): Traced<number
   }
 
   const winning = winningPrice(competitors);
+  const prevailing = prevailingPrice(competitors);
   const percentile = orderWeightedPercentile(competitors, CEILING_PERCENTILE);
-  const fromWinning = winning * CEILING_OVER_WINNING;
+
+  // Anchor on the winning price, but never below where the market actually
+  // trades. In clusters with a rock-bottom outlier the highest-share listing
+  // is not representative, and anchoring on it alone drags the ceiling under
+  // the median rival — which would make almost every seller look unviable.
+  const anchor = Math.max(winning, prevailing * 0.94);
+  const fromWinning = anchor * CEILING_OVER_WINNING;
   const value = (percentile + fromWinning) / 2;
 
   return traced(value, [
@@ -98,10 +118,13 @@ export function estimateCeiling(competitors: CompetitorListing[]): Traced<number
     step(
       "Ceiling from the winning price",
       "जीतने वाले दाम से सीमा",
-      `₹${winning.toFixed(0)} × ${CEILING_OVER_WINNING}`,
+      `₹${anchor.toFixed(0)} × ${CEILING_OVER_WINNING}`,
       fromWinning,
       "INR",
       "cluster_model",
+      anchor > winning
+        ? "Anchored to where the market actually trades, since the cheapest listing is an outlier"
+        : undefined,
     ),
     step(
       "दिखने की सीमा — Visibility ceiling",
