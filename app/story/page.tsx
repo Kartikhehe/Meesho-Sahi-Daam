@@ -1,12 +1,92 @@
-import { ComingSoon } from "@/components/shared/coming-soon";
+"use client";
 
-export default function Page() {
+/**
+ * Story Mode landing.
+ *
+ * Sets expectations and then gets out of the way: the walkthrough drives the
+ * real product, so this page is a table of contents, not a presentation.
+ */
+
+import { useRouter } from "next/navigation";
+import { PlayCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { STORY } from "@/content/story";
+import { useStartStory } from "@/components/story/story-rail";
+import { useUiStore } from "@/lib/store/ui-store";
+
+export default function StoryPage() {
+  const start = useStartStory();
+  const setStoryStep = useUiStore((s) => s.setStoryStep);
+  const setRole = useUiStore((s) => s.setRole);
+  const setActiveSeller = useUiStore((s) => s.setActiveSeller);
+  const router = useRouter();
+
+  const jumpTo = (index: number) => {
+    const step = STORY[index];
+    if (!step) return;
+    if (step.role) setRole(step.role);
+    if (step.sellerId) setActiveSeller(step.sellerId);
+    setStoryStep(index);
+    router.push(step.href);
+  };
+
   return (
-    <ComingSoon
-      section="Story"
-      title="Story Mode"
-      description="A nine-step guided walkthrough that drives the real app with a narration rail: the ₹95 gap, the three archetypes, floor and ceiling, the DON'T LIST verdict, the unlock simulator, the band opening, the ladder running, triggers firing over 90 simulated days, and cohort impact. Esc exits at any point."
-      phase={9}
-    />
+    <div className="mx-auto max-w-3xl px-4 py-6 md:px-6">
+      <header className="mb-5">
+        <h1 className="hi text-2xl font-semibold text-[var(--text)]">कहानी</h1>
+        <p className="text-sm text-[var(--text-muted)]">
+          Story mode — nine steps through the real product
+        </p>
+      </header>
+
+      <Card className="mb-5 p-5">
+        <p className="text-[14px] leading-relaxed text-[var(--text)]">
+          This walkthrough drives the actual application. Every number you will see is computed by
+          the engine from the simulated world — there are no screenshots and no mock states. The
+          narration tells you where to look; the screen underneath is the product.
+        </p>
+        <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-muted)]">
+          Arrow keys move between steps. <kbd className="rounded border border-[var(--border)] px-1 text-[11px]">Esc</kbd>{" "}
+          exits at any point and leaves you wherever you were, free to explore.
+        </p>
+        <Button variant="primary" className="mt-4" onClick={start}>
+          <PlayCircle size={15} aria-hidden />
+          Start the walkthrough
+        </Button>
+      </Card>
+
+      <h2 className="mb-2 text-[13px] font-semibold text-[var(--text)]">The nine steps</h2>
+      <ol className="space-y-2">
+        {STORY.map((step, i) => (
+          <li key={step.id}>
+            <button
+              type="button"
+              onClick={() => jumpTo(i)}
+              className="w-full rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-3.5 text-left hover:bg-[var(--surface-sunken)]"
+            >
+              <div className="flex items-start gap-3">
+                <span className="tabular mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--surface-sunken)] text-[12px] font-semibold text-[var(--text-muted)]">
+                  {i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-baseline gap-2">
+                    {step.titleHi ? (
+                      <span className="hi text-[14px] font-semibold text-[var(--text)]">
+                        {step.titleHi}
+                      </span>
+                    ) : null}
+                    <span className="text-[12px] text-[var(--text-muted)]">{step.title}</span>
+                  </p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">
+                    {step.narration}
+                  </p>
+                </div>
+              </div>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }

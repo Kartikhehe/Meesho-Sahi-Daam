@@ -38,10 +38,21 @@ export default function SkuPage({ params }: { params: Promise<{ id: string }> })
   const { world, analysis, status, error } = useListing(id);
   const [tab, setTab] = useState<TabKey>("price");
 
-  // The tab lives in the hash, so deep links land where they mean to.
+  /**
+   * The tab lives in the hash, so deep links — from an alert, or from Story
+   * Mode — land on the tab they mean to. This also listens for later hash
+   * changes: a client-side navigation from #price to #market keeps the same
+   * component mounted, so reading the hash only on mount would leave the tab
+   * stuck on whichever one loaded first.
+   */
   useEffect(() => {
-    const fromHash = window.location.hash.replace("#", "") as TabKey;
-    if (TABS.some((t) => t.key === fromHash)) setTab(fromHash);
+    const syncFromHash = () => {
+      const fromHash = window.location.hash.replace("#", "") as TabKey;
+      if (TABS.some((t) => t.key === fromHash)) setTab(fromHash);
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
   }, []);
 
   const select = (key: TabKey) => {
@@ -103,11 +114,24 @@ export default function SkuPage({ params }: { params: Promise<{ id: string }> })
               aria-label="Listing detail"
               className="mb-4 flex gap-1 overflow-x-auto border-b border-[var(--border)]"
             >
-              {TABS.map((t) => (
+              {TABS.map((t, i) => (
                 <button
                   key={t.key}
                   role="tab"
+                  id={`tab-${t.key}`}
+                  aria-controls="sku-tabpanel"
                   aria-selected={tab === t.key}
+                  // Roving tabindex: the tablist is one stop, arrows move within it.
+                  tabIndex={tab === t.key ? 0 : -1}
+                  onKeyDown={(e) => {
+                    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+                    e.preventDefault();
+                    const next = (i + (e.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
+                    const target = TABS[next];
+                    if (!target) return;
+                    select(target.key);
+                    document.getElementById(`tab-${target.key}`)?.focus();
+                  }}
                   onClick={() => select(t.key)}
                   className={cn(
                     "-mb-px shrink-0 border-b-2 px-3 py-2.5 text-[13px] font-medium",
@@ -122,7 +146,7 @@ export default function SkuPage({ params }: { params: Promise<{ id: string }> })
               ))}
             </div>
 
-            <div role="tabpanel">
+            <div role="tabpanel" id="sku-tabpanel" aria-labelledby={`tab-${tab}`} tabIndex={0}>
               {tab === "price" ? <PriceTab analysis={analysis} /> : null}
               {tab === "cost" ? <CostTab analysis={analysis} /> : null}
               {tab === "market" ? <MarketTab analysis={analysis} world={world} /> : null}

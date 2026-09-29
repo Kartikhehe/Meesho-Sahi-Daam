@@ -2,7 +2,7 @@
 
 **This file is the resume point.** If the session ends, read this file alone to pick up correctly.
 
-Last updated: Phase 8 complete and committed.
+Last updated: Phase 9 complete and committed; design pass in progress.
 
 ---
 
@@ -10,8 +10,8 @@ Last updated: Phase 8 complete and committed.
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 9 — Story Mode |
-| **Next file to touch** | `content/story.ts`, then `app/story/page.tsx` |
+| **Phase in progress** | Phase 10 — design pass (fonts, type scale, colour, responsive charts) |
+| **Next file to touch** | `app/globals.css` (self-hosted fonts + type scale) |
 | **Known breakage** | None |
 | **Build status** | `npm run build` clean; `npx tsx scripts/verify.ts` → **55/55 checks pass** |
 
@@ -75,7 +75,7 @@ Spotify 3.8 GB, pip 1.2 GB) but those are the user's to delete.
       *Gate: switching roles visibly changes reachability; a config change shows blast radius and
       appears in the audit log.*
 
-- [ ] **Phase 9 — Story Mode**
+- [x] **Phase 9 — Story Mode** ✅ committed — all 9 steps walked in a browser, Esc exits cleanly
       9-step guided walkthrough driving the real app with a narration rail.
       *Gate: start to finish, no dead ends, `Esc` exits cleanly at every step.*
 
@@ -104,6 +104,7 @@ Spotify 3.8 GB, pip 1.2 GB) but those are the user's to delete.
 | Phase 3 | Per-order history trimmed to 120 days, with full-history daily rollups kept | No screen looks back further than 120 days for individual orders; the long-run trend charts read the rollups, which are computed before trimming so they lose no fidelity. |
 | Phase 3 | The world is not persisted to `localStorage` | It is ~8 MB against a ~5 MB quota, and is reproducible from its seed anyway. What *is* persisted is what the seed cannot reproduce: price overrides, acknowledged alerts, and the audit log. |
 | Phase 7 | The new-listing ceiling comes from the cluster the twins *concentrate* in, weighted by similarity | Taking the first twin's cluster handed back a ceiling from whichever corner of the category happened to sort first. Kurti ceilings span ₹197-₹376, so that made honest listings look unviable. |
+| Phase 9 | SKU tab follows `hashchange`, and the story rail nudges it | The tab was read from the hash only on mount, so a story step deep-linking `#market` onto an already-open SKU page stayed on Price. `router.push` does not fire `hashchange` for hash-only moves, so the rail dispatches it. |
 | Phase 8 | The manager drill-in audits on the RESOLVED seller, not on the id | Deep-linking `?focus=` set the id before the world finished loading, so the audit effect saw `null` and silently dropped the entry — an audit log that misses the event it exists to record. Now keyed on the resolved seller with a ref guard, and `useAudit` is wrapped in `useCallback` so it is stable across renders. |
 | Phase 7 | `leverToClose` is bounded to moves a seller could actually make | Unbounded, it reported "cut your cost of goods by 94%" — arithmetically true, useless as advice, and worse, it dressed an impossible gap up as an actionable one. Bounds: 35% off COGS, 12 points off returns, COD share down to 25%. If nothing inside those closes the gap, it says so. |
 

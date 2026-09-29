@@ -18,7 +18,9 @@ export function BottomTabs() {
 
   return (
     <nav
-      aria-label="Main"
+      // Distinct from the sidebar's landmark: two navigation regions sharing a
+      // name gives screen-reader users two identical entries to choose between.
+      aria-label="Primary, compact"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--surface)] md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
