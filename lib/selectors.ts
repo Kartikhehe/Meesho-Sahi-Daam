@@ -200,23 +200,33 @@ export function alertsFor(world: World, sellerId: string): FiredTrigger[] {
 }
 
 /** Daily contribution over a window, for the home screen's trend. */
-export function contributionTrend(
-  world: World,
-  sellerId: string,
-  days = 30,
-): { day: number; value: number }[] {
+export type TrendPoint = {
+  day: number;
+  /** Earned that day after every deduction, from her settlement lines. */
+  value: number;
+  /** Parcels dispatched that day. */
+  parcels: number;
+  /** Of those, how many were delivered and kept. */
+  paid: number;
+};
+
+export function contributionTrend(world: World, sellerId: string, days = 30): TrendPoint[] {
   const settlements = settlementsFor(world, sellerId, days);
-  const byDay = new Map<number, number>();
+  const byDay = new Map<number, TrendPoint>();
   for (const s of settlements) {
     // Goods on a delivered parcel are gone; goods on a refused or returned one
     // come back and lose only the write-down. Charging the full cost of goods
     // on every failed parcel would overstate her losses.
     const goods = s.outcome === "delivered" ? s.cogs : s.cogs * RETURN_WRITEDOWN;
-    byDay.set(s.dispatchedDay, (byDay.get(s.dispatchedDay) ?? 0) + s.netCredit - goods);
+    const row = byDay.get(s.dispatchedDay) ?? { day: s.dispatchedDay, value: 0, parcels: 0, paid: 0 };
+    row.value += s.netCredit - goods;
+    row.parcels += 1;
+    if (s.outcome === "delivered") row.paid += 1;
+    byDay.set(s.dispatchedDay, row);
   }
-  const out: { day: number; value: number }[] = [];
+  const out: TrendPoint[] = [];
   for (let d = world.day - days + 1; d <= world.day; d++) {
-    out.push({ day: d, value: byDay.get(d) ?? 0 });
+    out.push(byDay.get(d) ?? { day: d, value: 0, parcels: 0, paid: 0 });
   }
   return out;
 }
