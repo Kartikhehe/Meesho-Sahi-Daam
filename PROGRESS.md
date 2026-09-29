@@ -2,7 +2,7 @@
 
 **This file is the resume point.** If the session ends, read this file alone to pick up correctly.
 
-Last updated: Phase 4 complete and committed.
+Last updated: Phase 5 complete and committed.
 
 ---
 
@@ -10,14 +10,13 @@ Last updated: Phase 4 complete and committed.
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 5 — The four signature charts |
-| **Next file to touch** | `components/charts/daam-meter.tsx` |
+| **Phase in progress** | Phase 6 — Seller experience |
+| **Next file to touch** | `app/(seller)/catalogue/page.tsx`, then S3 SKU detail |
 | **Known breakage** | None |
 | **Build status** | `npm run build` clean; `npx tsx scripts/verify.ts` → **55/55 checks pass** |
 
-**Phase 5 next.** Four hand-written SVG charts: Daam Meter (including the inverted
-no-viable-band geometry), unit-economics waterfall, leakage funnel, price-profit-volume curve.
-Each exercised in every state on `/dev/charts`.
+**Phase 6 next.** S1 Home, S2 Catalogue, S3 SKU detail (five tabs), S7 Settlement Explorer,
+S8 Learn. The charts and trace components they need are all built and verified.
 
 **Disk space warning.** The machine hit 100% disk (158 MB free) mid-build and `next build`
 failed with ENOSPC. Cleared `.next` and the npm cache to recover ~7 GB. If a build fails
@@ -50,7 +49,7 @@ Spotify 3.8 GB, pip 1.2 GB) but those are the user's to delete.
       `<DataTable />`, formatters, i18n scaffold (Hindi + English populated, 6 more stubbed).
       *Gate: a test page renders a survival price whose drawer shows the full derivation.*
 
-- [ ] **Phase 5 — The four signature charts**
+- [x] **Phase 5 — The four signature charts** ✅ committed — gallery at `/dev/charts`
       Daam Meter (incl. inverted no-band state), waterfall, leakage funnel, price–profit–volume.
       All states exercised on `/dev/charts`.
       *Gate: all four render correctly at 360px, 768px, 1440px, light and dark.*
