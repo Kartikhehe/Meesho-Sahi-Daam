@@ -2,7 +2,7 @@
 
 **This file is the resume point.** If the session ends, read this file alone to pick up correctly.
 
-Last updated: Phase 3 complete and committed; Phase 4 shared components written, pending verification.
+Last updated: Phase 4 complete and committed.
 
 ---
 
@@ -10,15 +10,14 @@ Last updated: Phase 3 complete and committed; Phase 4 shared components written,
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 4 — Trace system + shared components |
-| **Next file to touch** | `app/dev/trace/page.tsx` (the Phase 4 gate page) |
+| **Phase in progress** | Phase 5 — The four signature charts |
+| **Next file to touch** | `components/charts/daam-meter.tsx` |
 | **Known breakage** | None |
 | **Build status** | `npm run build` clean; `npx tsx scripts/verify.ts` → **55/55 checks pass** |
 
-**Phase 4 mostly written, not yet verified.** Done: `lib/i18n.ts`, `TraceDrawer`, `MoneyValue`
-+ `TraceLink`, `StatusChip`/`BandChip`/`StageChip`/`ScoreChip`, `MetricCard`, `DataTable`,
-`EmptyState`/`Skeleton`/`StateGate`. Still to do: the `/dev/trace` gate page that renders a
-survival price whose drawer shows the full derivation.
+**Phase 5 next.** Four hand-written SVG charts: Daam Meter (including the inverted
+no-viable-band geometry), unit-economics waterfall, leakage funnel, price-profit-volume curve.
+Each exercised in every state on `/dev/charts`.
 
 **Disk space warning.** The machine hit 100% disk (158 MB free) mid-build and `next build`
 failed with ENOSPC. Cleared `.next` and the npm cache to recover ~7 GB. If a build fails
@@ -46,7 +45,7 @@ Spotify 3.8 GB, pip 1.2 GB) but those are the user's to delete.
       localStorage. CSV import adapter + sample. Admin A5 Simulation Control, A6 Data Provenance.
       *Gate: regenerate world, advance clock 30 days, see the JSON change.*
 
-- [ ] **Phase 4 — Trace system + shared components**
+- [x] **Phase 4 — Trace system + shared components** ✅ committed — gate page at `/dev/trace`
       `<TraceDrawer />`, `<MoneyValue />`, `<StatusChip />`, `<EmptyState />`, `<MetricCard />`,
       `<DataTable />`, formatters, i18n scaffold (Hindi + English populated, 6 more stubbed).
       *Gate: a test page renders a survival price whose drawer shows the full derivation.*
