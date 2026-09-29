@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Sahi Daam — design tokens
+   Brand colours are for chrome and primary actions ONLY. Data encoding always
+   uses the semantic scale. This rule is what keeps the tool feeling like a
+   business instrument rather than a marketing site.
+   ========================================================================== */
+
+:root {
+  /* Brand — chrome and primary actions ONLY. Never for data. */
+  --brand-jamuni: #570d45;
+  --brand-jamuni-600: #7b1b63;
+  --brand-magenta: #f43397;
+  --brand-magenta-50: #fdeaf3;
+  --brand-aam: #ffc130;
+
+  /* Surfaces */
+  --bg: #ffffff;
+  --bg-subtle: #f7f7fa;
+  --surface: #ffffff;
+  --surface-sunken: #f1f1f6;
+  --border: #e3e3ec;
+  --border-strong: #c9c9d6;
+
+  /* Text */
+  --text: #1c1c28;
+  --text-muted: #5a5a72;
+  --text-subtle: #8a8aa3;
+
+  /* Semantic — ALL data encoding uses these */
+  --danger: #c62b4c;
+  --danger-bg: #fdecef;
+  --warning: #b4690e;
+  --warning-bg: #fdf3e3;
+  --success: #0e7c61;
+  --success-bg: #e6f4f0;
+  --info: #2b5cb8;
+  --info-bg: #eaf0fb;
+  --neutral-data: #6b7185;
+
+  /* The one permitted elevation */
+  --shadow-card: 0 1px 2px rgba(28, 28, 40, 0.06), 0 1px 3px rgba(28, 28, 40, 0.04);
+
+  --radius-card: 8px;
+  --radius-input: 6px;
+  --radius-chip: 999px;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-hindi: "Noto Sans Devanagari", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Dark mode: same token names, redefined. Sellers use this at night and it
+   reads as a serious tool. Applied by media query unless a theme is forced. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f0f16;
+    --bg-subtle: #14141d;
+    --surface: #1a1a25;
+    --surface-sunken: #22222f;
+    --border: #2e2e3d;
+    --border-strong: #43435a;
+
+    --text: #f2f2f7;
+    --text-muted: #adadc2;
+    --text-subtle: #8181a0;
+
+    --brand-magenta-50: #3a1029;
+
+    --danger: #ff7d95;
+    --danger-bg: #3a1620;
+    --warning: #f0b45c;
+    --warning-bg: #3a2a12;
+    --success: #4fd1aa;
+    --success-bg: #0e2e26;
+    --info: #85b0f5;
+    --info-bg: #14233d;
+    --neutral-data: #9a9ab4;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f0f16;
+  --bg-subtle: #14141d;
+  --surface: #1a1a25;
+  --surface-sunken: #22222f;
+  --border: #2e2e3d;
+  --border-strong: #43435a;
+
+  --text: #f2f2f7;
+  --text-muted: #adadc2;
+  --text-subtle: #8181a0;
+
+  --brand-magenta-50: #3a1029;
+
+  --danger: #ff7d95;
+  --danger-bg: #3a1620;
+  --warning: #f0b45c;
+  --warning-bg: #3a2a12;
+  --success: #4fd1aa;
+  --success-bg: #0e2e26;
+  --info: #85b0f5;
+  --info-bg: #14233d;
+  --neutral-data: #9a9ab4;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Expose tokens to Tailwind v4 utilities */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border-token: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+
+  --color-jamuni: var(--brand-jamuni);
+  --color-jamuni-600: var(--brand-jamuni-600);
+  --color-magenta: var(--brand-magenta);
+  --color-magenta-50: var(--brand-magenta-50);
+  --color-aam: var(--brand-aam);
+
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-neutral-data: var(--neutral-data);
+
+  --font-sans: var(--font-sans);
+  --font-hindi: var(--font-hindi);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg-subtle);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Every number in every table and chart aligns on its digits. */
+.tabular,
+table td,
+table th,
+.money {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Hindi gets first-class rendering, not an afterthought. */
+.hi,
+[lang="hi"] {
+  font-family: var(--font-hindi);
+}
+
+/* Visible focus everywhere. */
+:focus-visible {
+  outline: 2px solid var(--brand-magenta);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* The only motion is state-change feedback, and it yields to the OS setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--brand-jamuni);
+  color: #fff;
+  border-radius: 0 0 8px 0;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+::selection {
+  background: var(--brand-magenta-50);
+  color: var(--text);
+}
