@@ -2,7 +2,7 @@
 
 **This file is the resume point.** If the session ends, read this file alone to pick up correctly.
 
-Last updated: Phase 7 complete and committed.
+Last updated: Phase 8 complete and committed.
 
 ---
 
@@ -10,13 +10,15 @@ Last updated: Phase 7 complete and committed.
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 8 — Manager and Admin |
-| **Next file to touch** | `app/(manager)/cohort/page.tsx` (M1) |
+| **Phase in progress** | Phase 9 — Story Mode |
+| **Next file to touch** | `content/story.ts`, then `app/story/page.tsx` |
 | **Known breakage** | None |
 | **Build status** | `npm run build` clean; `npx tsx scripts/verify.ts` → **55/55 checks pass** |
 
-**Phase 8 next.** M1-M5 (manager) and A1-A7 (admin). A5 Simulation and A6 Provenance already
-exist from Phase 3; the rest are new. Access control is already centralised in `lib/access.ts`.
+**Phase 9 next.** The 9-step guided walkthrough driving the real app with a narration rail:
+the ₹95 gap → three archetypes → floor & ceiling → the DON'T LIST verdict → the unlock
+simulator → the band opens → the ladder runs → triggers over 90 days → cohort impact.
+Then Phase 10: dark mode, mobile, a11y, README, Lighthouse.
 
 **Browser verification.** There is no Playwright package installed, but its Chromium cache is
 present at `~/Library/Caches/ms-playwright/chromium_headless_shell-1243/`. Drive it directly
@@ -68,7 +70,7 @@ Spotify 3.8 GB, pip 1.2 GB) but those are the user's to delete.
       S4 New Listing wizard (all three verdicts), S5 Cost Unlock Simulator, S6 Alerts.
       *Gate: walk Farida zero→listed; hit a genuine DON'T LIST verdict on another.*
 
-- [ ] **Phase 8 — Manager and Admin**
+- [x] **Phase 8 — Manager and Admin** ✅ committed — blast radius and audit verified in a browser
       M1–M5, A1–A7. Access control in `lib/access.ts`. Audit log writing for real.
       *Gate: switching roles visibly changes reachability; a config change shows blast radius and
       appears in the audit log.*
@@ -102,6 +104,7 @@ Spotify 3.8 GB, pip 1.2 GB) but those are the user's to delete.
 | Phase 3 | Per-order history trimmed to 120 days, with full-history daily rollups kept | No screen looks back further than 120 days for individual orders; the long-run trend charts read the rollups, which are computed before trimming so they lose no fidelity. |
 | Phase 3 | The world is not persisted to `localStorage` | It is ~8 MB against a ~5 MB quota, and is reproducible from its seed anyway. What *is* persisted is what the seed cannot reproduce: price overrides, acknowledged alerts, and the audit log. |
 | Phase 7 | The new-listing ceiling comes from the cluster the twins *concentrate* in, weighted by similarity | Taking the first twin's cluster handed back a ceiling from whichever corner of the category happened to sort first. Kurti ceilings span ₹197-₹376, so that made honest listings look unviable. |
+| Phase 8 | The manager drill-in audits on the RESOLVED seller, not on the id | Deep-linking `?focus=` set the id before the world finished loading, so the audit effect saw `null` and silently dropped the entry — an audit log that misses the event it exists to record. Now keyed on the resolved seller with a ref guard, and `useAudit` is wrapped in `useCallback` so it is stable across renders. |
 | Phase 7 | `leverToClose` is bounded to moves a seller could actually make | Unbounded, it reported "cut your cost of goods by 94%" — arithmetically true, useless as advice, and worse, it dressed an impossible gap up as an actionable one. Bounds: 35% off COGS, 12 points off returns, COD share down to 25%. If nothing inside those closes the gap, it says so. |
 
 ---

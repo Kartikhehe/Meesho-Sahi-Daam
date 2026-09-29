@@ -208,13 +208,21 @@ export function VerdictCard({
         </Card>
       ) : null}
 
-      {verdict === "DONT_LIST" ? <DontListCard band={band} floor={floor} inputs={inputs} ceiling={ceiling} codShare={codShare} onBack={onBack} onList={onList} /> : null}
+      {verdict === "DONT_LIST" ? (
+        <DontListCard
+          floor={floor}
+          inputs={inputs}
+          ceiling={ceiling}
+          codShare={codShare}
+          onBack={onBack}
+          onList={onList}
+        />
+      ) : null}
     </div>
   );
 }
 
 function DontListCard({
-  band,
   floor,
   inputs,
   ceiling,
@@ -222,7 +230,6 @@ function DontListCard({
   onBack,
   onList,
 }: {
-  band: BandAnalysis;
   floor: Traced<number>;
   inputs: CostInputs;
   ceiling: number;
