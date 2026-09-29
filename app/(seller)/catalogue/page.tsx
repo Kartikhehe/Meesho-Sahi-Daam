@@ -1,5 +1,311 @@
-import { ComingSoon } from "@/components/shared/coming-soon";
+"use client";
 
-export default function Page() {
-  return <ComingSoon section="S2" title="My Catalogue" href="/catalogue" phase={6} />;
+/**
+ * S2 · My Catalogue.
+ *
+ * Dense and fast: every listing with its Daam Score, floor, ceiling, band
+ * position and what it earns per order. Filters, sort, and a bulk "apply
+ * suggested price" that never moves a price below the seller's own floor.
+ */
+
+import { Suspense, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Check } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { DataTable, type Column } from "@/components/shared/data-table";
+import { MoneyValue } from "@/components/shared/money-value";
+import { BandChip, ScoreChip, StageChip } from "@/components/shared/status-chip";
+import { EmptyState, Skeleton, StateGate } from "@/components/shared/empty-state";
+import { useSeller } from "@/lib/use-seller";
+import { useWorldStore } from "@/lib/store/world-store";
+import type { ListingAnalysis } from "@/lib/selectors";
+import { inr, count } from "@/lib/format";
+import { cn } from "@/lib/cn";
+
+type Filter = "all" | "below-floor" | "no-band" | "above-gate" | "healthy";
+
+const FILTERS: { key: Filter; label: string; labelHi: string }[] = [
+  { key: "all", label: "All", labelHi: "सब" },
+  { key: "below-floor", label: "Below floor", labelHi: "सुरक्षा दाम से नीचे" },
+  { key: "no-band", label: "No viable price", labelHi: "कोई सही दाम नहीं" },
+  { key: "above-gate", label: "Not being seen", labelHi: "दिख नहीं रहे" },
+  { key: "healthy", label: "Healthy", labelHi: "ठीक" },
+];
+
+function matches(a: ListingAnalysis, filter: Filter): boolean {
+  const v = a.band.value.verdict;
+  switch (filter) {
+    case "below-floor":
+      return v === "BELOW_FLOOR";
+    case "no-band":
+      return v === "NO_BAND";
+    case "above-gate":
+      return v === "ABOVE_GATE";
+    case "healthy":
+      return v === "HEALTHY" || v === "THIN";
+    default:
+      return true;
+  }
+}
+
+function CatalogueInner() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const { analyses, summary, status, error } = useSeller();
+  const setPrice = useWorldStore((s) => s.setPrice);
+
+  const [filter, setFilter] = useState<Filter>((params.get("filter") as Filter) ?? "all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [applied, setApplied] = useState(0);
+
+  const rows = useMemo(() => analyses.filter((a) => matches(a, filter)), [analyses, filter]);
+
+  /** Only listings with a viable band can take a suggestion. */
+  const applicable = useMemo(
+    () => rows.filter((a) => selected.has(a.listing.id) && a.band.value.recommended > 0),
+    [rows, selected],
+  );
+
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const applySuggested = () => {
+    for (const a of applicable) setPrice(a.listing.id, a.band.value.recommended);
+    setApplied(applicable.length);
+    setSelected(new Set());
+  };
+
+  const columns: Column<ListingAnalysis>[] = [
+    {
+      key: "select",
+      header: "",
+      width: "36px",
+      render: (a) => (
+        <input
+          type="checkbox"
+          checked={selected.has(a.listing.id)}
+          onChange={() => toggle(a.listing.id)}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Select ${a.listing.name}`}
+          className="h-4 w-4 accent-[var(--brand-magenta)]"
+        />
+      ),
+    },
+    {
+      key: "name",
+      header: "Listing",
+      headerHi: "सामान",
+      sortValue: (a) => a.listing.name,
+      render: (a) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-[var(--text)]">{a.listing.name}</p>
+          <p className="text-[11px] text-[var(--text-subtle)]">{a.listing.category}</p>
+        </div>
+      ),
+    },
+    {
+      key: "price",
+      header: "Price",
+      headerHi: "दाम",
+      numeric: true,
+      sortValue: (a) => a.listing.price,
+      render: (a) => <span className="font-medium">{inr(a.listing.price)}</span>,
+    },
+    {
+      key: "floor",
+      header: "Survival price",
+      headerHi: "सुरक्षा दाम",
+      numeric: true,
+      sortValue: (a) => a.floor.value,
+      render: (a) => (
+        <MoneyValue
+          value={a.floor.value}
+          traced={a.floor}
+          label={`Survival price — ${a.listing.name}`}
+          labelHi="सुरक्षा दाम"
+          size="sm"
+        />
+      ),
+    },
+    {
+      key: "ceiling",
+      header: "Ceiling",
+      headerHi: "सीमा",
+      numeric: true,
+      hideOnMobile: true,
+      sortValue: (a) => a.ceiling.value,
+      render: (a) => (
+        <MoneyValue
+          value={a.ceiling.value}
+          traced={a.ceiling}
+          label={`Visibility ceiling — ${a.listing.name}`}
+          labelHi="दिखने की सीमा"
+          size="sm"
+        />
+      ),
+    },
+    {
+      key: "band",
+      header: "Band",
+      sortValue: (a) => a.band.value.verdict,
+      render: (a) => <BandChip verdict={a.band.value.verdict} />,
+    },
+    {
+      key: "perOrder",
+      header: "Per order",
+      headerHi: "हर ऑर्डर",
+      numeric: true,
+      sortValue: (a) => a.contribution.value,
+      render: (a) => (
+        <MoneyValue
+          value={a.contribution.value}
+          traced={a.contribution}
+          label={`What you earn per parcel — ${a.listing.name}`}
+          labelHi="हर पार्सल पर"
+          size="sm"
+          tone="auto"
+        />
+      ),
+    },
+    {
+      key: "orders",
+      header: "30d orders",
+      numeric: true,
+      hideOnMobile: true,
+      sortValue: (a) => a.ordersLast30,
+      render: (a) => count(a.ordersLast30),
+    },
+    {
+      key: "score",
+      header: "Score",
+      headerHi: "स्कोर",
+      numeric: true,
+      sortValue: (a) => a.score.value,
+      render: (a) => <ScoreChip score={a.score.value} />,
+    },
+    {
+      key: "stage",
+      header: "Stage",
+      hideOnMobile: true,
+      sortValue: (a) => a.listing.stage,
+      render: (a) => <StageChip stage={a.listing.stage} />,
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-5 md:px-6">
+      <header className="mb-4">
+        <h1 className="hi text-2xl font-semibold text-[var(--text)]">मेरा सामान</h1>
+        <p className="text-sm text-[var(--text-muted)]">
+          My catalogue — {count(summary.listingCount)} listings,{" "}
+          {count(summary.belowFloorCount + summary.noBandCount)} needing attention
+        </p>
+      </header>
+
+      <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
+        {analyses.length === 0 ? (
+          <EmptyState
+            title="Nothing listed yet"
+            description="Your listings will appear here with their survival price, their ceiling, and what each one earns you per parcel."
+          />
+        ) : (
+          <>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {FILTERS.map((f) => {
+                const n = analyses.filter((a) => matches(a, f.key)).length;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => {
+                      setFilter(f.key);
+                      router.replace(f.key === "all" ? "/catalogue" : `/catalogue?filter=${f.key}`);
+                    }}
+                    className={cn(
+                      "rounded-[var(--radius-chip)] border px-3 py-1.5 text-[12px] font-medium",
+                      filter === f.key
+                        ? "border-[var(--brand-magenta)] bg-[var(--brand-magenta-50)] text-[var(--text)]"
+                        : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-sunken)]",
+                    )}
+                  >
+                    <span className="hi">{f.labelHi}</span>
+                    <span className="tabular ml-1.5 text-[var(--text-subtle)]">{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selected.size > 0 ? (
+              <Card className="mb-3 flex flex-wrap items-center gap-3 p-3">
+                <span className="text-[13px] text-[var(--text)]">
+                  {count(selected.size)} selected
+                  {applicable.length < selected.size ? (
+                    <span className="text-[var(--text-muted)]">
+                      {" "}
+                      · {count(selected.size - applicable.length)} have no viable price, so they are
+                      left alone
+                    </span>
+                  ) : null}
+                </span>
+                <div className="ml-auto flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                    Clear
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    disabled={applicable.length === 0}
+                    onClick={applySuggested}
+                  >
+                    Apply suggested price to {count(applicable.length)}
+                  </Button>
+                </div>
+              </Card>
+            ) : null}
+
+            {applied > 0 ? (
+              <Card className="mb-3 flex items-center gap-2 border-[var(--success)]/30 bg-[var(--success-bg)] p-3">
+                <Check size={15} aria-hidden className="text-[var(--success)]" />
+                <p className="text-[13px] text-[var(--text)]">
+                  Updated {count(applied)} prices. You can change any of them back at any time.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setApplied(0)}
+                  className="ml-auto text-[12px] text-[var(--text-muted)] hover:underline"
+                >
+                  Dismiss
+                </button>
+              </Card>
+            ) : null}
+
+            <DataTable
+              rows={rows}
+              columns={columns}
+              getRowKey={(a) => a.listing.id}
+              onRowClick={(a) => router.push(`/sku/${a.listing.id}`)}
+              initialSort={{ key: "perOrder", direction: "asc" }}
+              emptyTitle="Nothing matches this filter"
+              emptyDescription="Try another filter, or clear it to see your whole catalogue."
+              caption="Your listings with their survival price, ceiling and what each earns"
+            />
+          </>
+        )}
+      </StateGate>
+    </div>
+  );
+}
+
+export default function CataloguePage() {
+  return (
+    <Suspense fallback={<div className="p-6"><Skeleton className="h-96 w-full" /></div>}>
+      <CatalogueInner />
+    </Suspense>
+  );
 }

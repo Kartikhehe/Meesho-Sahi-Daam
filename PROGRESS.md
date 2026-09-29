@@ -2,7 +2,7 @@
 
 **This file is the resume point.** If the session ends, read this file alone to pick up correctly.
 
-Last updated: Phase 5 complete and committed.
+Last updated: Phase 6 complete and committed.
 
 ---
 
@@ -10,13 +10,19 @@ Last updated: Phase 5 complete and committed.
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 6 — Seller experience |
-| **Next file to touch** | `app/(seller)/catalogue/page.tsx`, then S3 SKU detail |
+| **Phase in progress** | Phase 7 — The decision flows |
+| **Next file to touch** | `app/(seller)/new-listing/page.tsx` (the 4-step wizard) |
 | **Known breakage** | None |
 | **Build status** | `npm run build` clean; `npx tsx scripts/verify.ts` → **55/55 checks pass** |
 
-**Phase 6 next.** S1 Home, S2 Catalogue, S3 SKU detail (five tabs), S7 Settlement Explorer,
-S8 Learn. The charts and trace components they need are all built and verified.
+**Phase 7 next.** S4 New Listing wizard (all three verdicts: LIST / DIFFERENTIATE /
+DON'T LIST YET), S5 Cost Unlock Simulator, S6 Alerts with the WhatsApp preview.
+
+**Browser verification.** There is no Playwright package installed, but its Chromium cache is
+present at `~/Library/Caches/ms-playwright/chromium_headless_shell-1243/`. Drive it directly
+over CDP with Node 22's built-in `WebSocket` (spawn with `--remote-debugging-port`, then
+`fetch` `/json/list` for the target). This is how the client-hydrated screens get verified —
+`curl` alone only ever sees the empty shell, since the world loads client-side.
 
 **Disk space warning.** The machine hit 100% disk (158 MB free) mid-build and `next build`
 failed with ENOSPC. Cleared `.next` and the npm cache to recover ~7 GB. If a build fails
@@ -54,7 +60,7 @@ Spotify 3.8 GB, pip 1.2 GB) but those are the user's to delete.
       All states exercised on `/dev/charts`.
       *Gate: all four render correctly at 360px, 768px, 1440px, light and dark.*
 
-- [ ] **Phase 6 — Seller experience**
+- [x] **Phase 6 — Seller experience** ✅ committed — gate verified in a real browser
       S1 Home, S2 Catalogue, S3 SKU detail (5 tabs), S7 Settlement Explorer, S8 Learn.
       *Gate: open Imran's catalogue, find a below-floor SKU, trace exactly why.*
 

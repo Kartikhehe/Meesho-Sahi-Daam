@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { RoleSwitcher } from "./role-switcher";
+import { SellerSwitcher } from "./seller-switcher";
 import { ThemeToggle } from "./theme-toggle";
+import { useUiStore } from "@/lib/store/ui-store";
 
 export function TopBar() {
+  const role = useUiStore((s) => s.role);
+
   return (
     <header className="sticky top-0 z-40 bg-[var(--brand-jamuni)]">
       <div className="flex h-14 items-center gap-3 px-4">
@@ -23,6 +27,7 @@ export function TopBar() {
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
+          {role === "seller" ? <SellerSwitcher /> : null}
           <RoleSwitcher />
         </div>
       </div>
