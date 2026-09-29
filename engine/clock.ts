@@ -88,7 +88,12 @@ function resolveOutcome(
   return "delivered";
 }
 
-function settlementFor(
+/**
+ * The settlement line for one order. A pure function of the order, the
+ * listing's weight and the seller's rates — which is why a stored world does
+ * not persist these and rebuilds them on load instead.
+ */
+export function settlementFor(
   order: OrderEvent,
   listing: Listing,
   seller: Seller,
@@ -245,9 +250,19 @@ export function advanceDays(world: World, days: number): AdvanceResult {
         const floor = survivalPrice(costInputsFor(listing, seller)).value;
         band = classifyBand(floor, ceiling, listing.price).value;
       }
+      // Sellers reorder. A listing that is still selling gets restocked when it
+      // runs low — without this the whole world simply runs out of goods over
+      // 18 months and every listing exits, which is an artefact of the
+      // simulation rather than anything true about the business.
+      const remaining = Math.max(0, listing.inventory - sold);
+      const restocked =
+        remaining < 8 && ordersLast30 > 0 && listing.stage !== "S5_EXIT"
+          ? remaining + Math.max(30, Math.round(ordersLast30 * 2.5))
+          : remaining;
+
       return {
         ...listing,
-        inventory: Math.max(0, listing.inventory - sold),
+        inventory: restocked,
         stage: advanceStage(listing, day, { ordersLast30, band }),
       };
     });

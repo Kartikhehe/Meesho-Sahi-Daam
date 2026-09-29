@@ -2,7 +2,7 @@
 
 **This file is the resume point.** If the session ends, read this file alone to pick up correctly.
 
-Last updated: Phase 2 complete and committed.
+Last updated: Phase 3 complete and committed; Phase 4 shared components written, pending verification.
 
 ---
 
@@ -10,16 +10,20 @@ Last updated: Phase 2 complete and committed.
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 3 — World generation + persistence |
-| **Next file to touch** | `scripts/generate-world.ts`, then `lib/store/world-store.ts` |
+| **Phase in progress** | Phase 4 — Trace system + shared components |
+| **Next file to touch** | `app/dev/trace/page.tsx` (the Phase 4 gate page) |
 | **Known breakage** | None |
-| **Build status** | `npm run build` clean; `npx tsx scripts/verify.ts` → 42/42 checks pass |
+| **Build status** | `npm run build` clean; `npx tsx scripts/verify.ts` → **55/55 checks pass** |
 
-**Phase 3 partly done already.** The world generator exists (`data/generator/`: personas,
-clusters, listings, world) and produces 6 sellers, 60 clusters, 355 seller listings and ~1,900
-competitors deterministically from seed 230540. Still to do: write `/data/world.json`, the
-Zustand store with localStorage persistence, the CSV import adapter + sample file, and the two
-Admin screens (A5 Simulation Control, A6 Data Provenance).
+**Phase 4 mostly written, not yet verified.** Done: `lib/i18n.ts`, `TraceDrawer`, `MoneyValue`
++ `TraceLink`, `StatusChip`/`BandChip`/`StageChip`/`ScoreChip`, `MetricCard`, `DataTable`,
+`EmptyState`/`Skeleton`/`StateGate`. Still to do: the `/dev/trace` gate page that renders a
+survival price whose drawer shows the full derivation.
+
+**Disk space warning.** The machine hit 100% disk (158 MB free) mid-build and `next build`
+failed with ENOSPC. Cleared `.next` and the npm cache to recover ~7 GB. If a build fails
+mysteriously, check `df -h` first. ~17 GB more is reclaimable from user caches (Chrome 7.5 GB,
+Spotify 3.8 GB, pip 1.2 GB) but those are the user's to delete.
 
 ---
 
@@ -37,7 +41,7 @@ Admin screens (A5 Simulation Control, A6 Data Provenance).
       retriever, bandit, six triggers, lifecycle machine, clock. `scripts/verify.ts`.
       *Gate: `npx tsx scripts/verify.ts` reproduces every reference number in section 1.*
 
-- [ ] **Phase 3 — World generation + persistence**
+- [x] **Phase 3 — World generation + persistence** ✅ committed
       6 sellers, 60 clusters, ~420 listings, 18 months history → `/data/world.json`. Zustand +
       localStorage. CSV import adapter + sample. Admin A5 Simulation Control, A6 Data Provenance.
       *Gate: regenerate world, advance clock 30 days, see the JSON change.*
@@ -89,6 +93,10 @@ Admin screens (A5 Simulation Control, A6 Data Provenance).
 | Phase 2 | Ceiling anchors on `max(winningPrice, prevailingPrice × 0.94)` | The brief defines the winning price as the highest-order-share listing. Under a price softmax that is always the cheapest listing, which in a cluster with a rock-bottom outlier sits well below where the market trades — dragging the ceiling under the median rival and making almost every seller look unviable. Blending in the order-weighted median fixes that while still reproducing the brief's ₹329 → ₹352 fixture exactly. |
 | Phase 2 | Listing COGS anchored at 30-40% of the cluster median price | The survival price lands at ~2.25× COGS once every leakage is counted, so COGS at half of market price mathematically guarantees no viable band. Sourcing at ~a third of retail is what makes marketplace selling work at all. |
 | Phase 2 | Parcel weight scales with the cluster's price level | Freight is charged by slab, so an 800g parcel on a ₹200 kurti is most of the cost to serve. Real sellers in cheap clusters ship light. |
+| Phase 3 | Listings restock when they run low | Inventory depleted but was never replenished, so after 18 months 279 of 355 listings had exited and order volume had collapsed from 28/day to 4.7/day. That was an artefact of the simulation, not anything true about the business — real sellers reorder. |
+| Phase 3 | `world.json` stores neither settlement lines nor alert traces | Both are pure functions of their inputs, so they are rebuilt on load by `hydrateWorld`. Cuts the file from 100.6 MB to 7.7 MB, and removes the risk of a stored derivation silently disagreeing with the cost model that produced it. A verify check proves every rehydrated line is byte-identical to the original. |
+| Phase 3 | Per-order history trimmed to 120 days, with full-history daily rollups kept | No screen looks back further than 120 days for individual orders; the long-run trend charts read the rollups, which are computed before trimming so they lose no fidelity. |
+| Phase 3 | The world is not persisted to `localStorage` | It is ~8 MB against a ~5 MB quota, and is reproducible from its seed anyway. What *is* persisted is what the seed cannot reproduce: price overrides, acknowledged alerts, and the audit log. |
 
 ---
 

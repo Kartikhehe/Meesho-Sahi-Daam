@@ -17,6 +17,11 @@ import { findTwins } from "../engine/twins";
 import { makeRng } from "../engine/rng";
 import { buildEmptyWorld } from "../data/generator/world";
 import { advanceDays } from "../engine/clock";
+import { hydrateWorld, serialiseWorld, RETAINED_HISTORY_DAYS } from "../data/generator/serialise";
+import { importCatalogue } from "../data/import/csv-adapter";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { CompetitorListing } from "../engine/types";
 
 let failures = 0;
@@ -163,6 +168,57 @@ checkEq("clock advanced 14 days", advanced.world.day, 14);
 
 const rerun = advanceDays(buildEmptyWorld(230540), 14);
 checkEq("clock is reproducible from the seed", rerun.world.orders.length, advanced.world.orders.length);
+
+section("Storage round-trip  —  a stored world rebuilds exactly");
+// serialiseWorld drops settlement lines and alert traces, because both are pure
+// functions of their inputs. This proves hydrateWorld puts back exactly what
+// the clock produced, so the saving costs no fidelity.
+const before = advanceDays(buildEmptyWorld(230540), 21).world;
+const stored = serialiseWorld(before);
+const after = hydrateWorld(JSON.parse(JSON.stringify(stored)) as typeof stored);
+
+checkEq("stored world carries no settlement lines", stored.settlements.length, 0);
+checkEq("rehydrated settlement count matches", after.settlements.length, after.orders.length);
+
+const retained = before.settlements.filter((s) => s.dispatchedDay > before.day - RETAINED_HISTORY_DAYS);
+const sumNet = (rows: { netCredit: number }[]) => rows.reduce((a, r) => a + r.netCredit, 0);
+check("rehydrated net credit matches the original", sumNet(after.settlements), sumNet(retained), 0.01);
+checkEq(
+  "every rehydrated line is identical to the original",
+  JSON.stringify(after.settlements) === JSON.stringify(retained),
+  true,
+);
+checkEq("daily rollups cover the whole history", (stored.daily?.length ?? 0) > 0, true);
+checkEq("alert traces are not persisted", stored.alerts.every((a) => a.trace === undefined), true);
+
+section("CSV import adapter  —  real catalogue data maps onto engine types");
+const csv = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../data/import/sample-catalogue.csv"), "utf8");
+const imported = importCatalogue(csv);
+checkEq("rows accepted", imported.report.rowsAccepted, 33);
+checkEq("no rows rejected", imported.report.rowsRejected.length, 0);
+checkEq("clusters created", imported.report.clustersCreated > 0, true);
+checkEq("competitors created", imported.competitors.length, 33);
+checkEq(
+  "order shares sum to 1 per cluster",
+  imported.clusters.every((c) => {
+    const share = imported.competitors
+      .filter((x) => x.clusterId === c.id)
+      .reduce((a, x) => a + x.orderShare, 0);
+    return Math.abs(share - 1) < 1e-6;
+  }),
+  true,
+);
+checkEq(
+  "the adapter names what a catalogue file cannot supply",
+  imported.report.modelledFields.some((f) => f.field === "COGS"),
+  true,
+);
+// A ceiling computed from imported rows must be usable by the engine unchanged.
+const importedCluster = imported.clusters[0];
+if (importedCluster) {
+  const importedRivals = imported.competitors.filter((c) => c.clusterId === importedCluster.id);
+  checkEq("ceiling is computable from imported rows", estimateCeiling(importedRivals).value > 0, true);
+}
 
 // ---------------------------------------------------------------------------
 

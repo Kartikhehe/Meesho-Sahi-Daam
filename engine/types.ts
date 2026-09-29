@@ -139,6 +139,24 @@ export type SettlementLine = {
   netCredit: number;
 };
 
+/**
+ * One row per seller per day, covering the entire history.
+ *
+ * Per-order rows are trimmed to a trailing window when a world is stored, so
+ * these aggregates are what the long-run trend charts read. They are computed
+ * before trimming, so no chart loses fidelity.
+ */
+export type DailyRollup = {
+  sellerId: string;
+  day: number;
+  orders: number;
+  delivered: number;
+  rto: number;
+  returned: number;
+  gmv: number;
+  netCredit: number;
+};
+
 export type World = {
   seed: number;
   /** Current simulated day index. */
@@ -149,6 +167,8 @@ export type World = {
   competitors: CompetitorListing[];
   orders: OrderEvent[];
   settlements: SettlementLine[];
+  /** Full-history daily aggregates; present on a stored (trimmed) world. */
+  daily?: DailyRollup[];
   alerts: FiredTrigger[];
   experiments: LadderExperiment[];
   auditLog: AuditEntry[];
@@ -195,7 +215,15 @@ export type FiredTrigger = {
   rupeeImpact: number;
   message: string;
   messageHi: string;
-  trace: Traced<number>;
+  /**
+   * The derivation behind `rupeeImpact`.
+   *
+   * Optional because a stored world drops it: a trace is recomputable from its
+   * inputs, and persisting thousands of them both bloats the file and risks
+   * showing a seller a derivation that no longer matches today's numbers. The
+   * UI recomputes the trace when an alert is opened.
+   */
+  trace?: Traced<number>;
   /** True when the weekly cap suppressed it. Admin can inspect these. */
   muted: boolean;
   acknowledged?: boolean;
