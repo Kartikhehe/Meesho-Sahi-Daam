@@ -1,115 +1,102 @@
 /**
  * Band classification — where a price sits between the survival floor and the
- * visibility ceiling.
+ * visibility ceiling, and what to do about a new listing.
  *
- * The case that matters most is the INVERTED one: floor above ceiling, where no
- * price both covers her costs and gets seen. Every pricing tool in the market
- * will happily recommend a number here. The honest answer is "don't list this
- * yet — fix your cost or your returns first", and naming that is the single
- * best idea in this product.
+ * Round-2 rule. The band is [floor × (1 + m), ceiling] with a safety margin m
+ * (3% by default, seller-adjustable): pricing exactly at break-even leaves no
+ * room for a bad week. Its width, as a share of the ceiling, picks the verdict:
+ *
+ *   ≤ 0      DON'T LIST YET     no price both pays and gets seen
+ *   0–5%     DIFFERENTIATE      a band too thin to compete on price alone
+ *   5–15%    LAUNCH AT PROFIT-MAX   argmax of expected contribution in the band
+ *   > 15%    PRICE FOR MARGIN   plenty of room — and a design worth flagging to
+ *                               sourcing (C2M), because rivals will notice
  */
 
+import { BAND_MARGIN } from "./constants";
 import { step, traced, type Traced } from "./trace";
-import type { BandAnalysis, BandVerdict } from "./types";
+import type { BandAnalysis, BandVerdict, LaunchVerdict } from "./types";
 
-/** Under 5% of headroom is too thin to compete on price alone. */
-const THIN_BAND_PCT = 0.05;
-
-/** Prices ending in 9 convert better and read as considered rather than arbitrary. */
+/** Prices ending in 9 read as considered rather than arbitrary. */
 export function snapPrice(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;
   const rounded = Math.round(value);
-  const lastDigit = rounded % 10;
-  if (lastDigit === 9) return rounded;
-  // Round up to the next number ending in 9, so we never land below the floor.
-  return rounded + ((9 - lastDigit + 10) % 10);
+  return rounded + ((9 - (rounded % 10) + 10) % 10);
+}
+
+export function launchVerdict(widthPct: number): LaunchVerdict {
+  if (widthPct <= 0) return "DONT_LIST";
+  if (widthPct < 0.05) return "DIFFERENTIATE";
+  if (widthPct <= 0.15) return "PROFIT_MAX";
+  return "PRICE_FOR_MARGIN";
 }
 
 /**
- * Where to launch inside the band. Sits at 35% of the way up from floor to
- * ceiling — low enough to win visibility, high enough that a small cost drift
- * does not immediately push her under water.
+ * A fallback suggestion when no demand curve is available: 35% of the way up
+ * the band. Wherever a demand model exists, callers replace it with the
+ * profit-maximising price (engine/launch.ts).
  */
-export function recommendedPrice(floor: number, ceiling: number): number {
-  if (!Number.isFinite(floor) || floor <= 0) return 0;
-  if (ceiling <= floor) return 0; // no viable price
-  const raw = floor + (ceiling - floor) * 0.35;
-  const snapped = snapPrice(raw);
-  // Snapping must never push the recommendation outside the band.
+export function recommendedPrice(floor: number, ceiling: number, margin = BAND_MARGIN): number {
+  const low = floor * (1 + margin);
+  if (!Number.isFinite(floor) || floor <= 0 || ceiling <= low) return 0;
+  const snapped = snapPrice(low + (ceiling - low) * 0.35);
   return snapped > ceiling ? Math.floor(ceiling) : snapped;
 }
 
-export function classifyBand(floor: number, ceiling: number, price: number): Traced<BandAnalysis> {
-  const widthRupees = ceiling - floor;
+export function classifyBand(
+  floor: number,
+  ceiling: number,
+  price: number,
+  margin: number = BAND_MARGIN,
+): Traced<BandAnalysis> {
+  const bandLow = floor * (1 + margin);
+  const widthRupees = ceiling - bandLow;
   const widthPct = ceiling > 0 ? widthRupees / ceiling : 0;
-  const recommended = recommendedPrice(floor, ceiling);
 
   let verdict: BandVerdict;
-  if (!Number.isFinite(floor) || widthRupees <= 0) {
-    // The floor sits above the ceiling. No price works.
-    verdict = "NO_BAND";
-  } else if (price < floor) {
-    verdict = "BELOW_FLOOR";
-  } else if (price > ceiling) {
-    verdict = "ABOVE_GATE";
-  } else if (widthPct < THIN_BAND_PCT) {
-    verdict = "THIN";
-  } else {
-    verdict = "HEALTHY";
-  }
+  if (!Number.isFinite(floor) || widthRupees <= 0) verdict = "NO_BAND";
+  else if (price < floor) verdict = "BELOW_FLOOR";
+  else if (price > ceiling) verdict = "ABOVE_GATE";
+  else if (widthPct < 0.05) verdict = "THIN";
+  else verdict = "HEALTHY";
 
   const analysis: BandAnalysis = {
     floor,
     ceiling,
     price,
     verdict,
+    bandLow,
+    margin,
     widthRupees,
     widthPct,
-    recommended,
+    launch: launchVerdict(Number.isFinite(widthPct) ? widthPct : -1),
+    recommended: recommendedPrice(floor, ceiling, margin),
   };
 
-  const trace = [
+  const f = Number.isFinite(floor) ? floor.toFixed(2) : "—";
+  return traced(analysis, [
+    step("सुरक्षा दाम — Your survival price", "सुरक्षा दाम", `₹${f}`, floor, "INR", "derived", "Below this, every parcel costs you money"),
+    step("Lowest safe price", "सबसे कम सुरक्षित दाम", `₹${f} × (1 + ${(margin * 100).toFixed(0)}%)`, bandLow, "INR", "derived", "A small cushion above break-even, so one bad week does not tip you under"),
+    step("दिखने की सीमा — Visibility ceiling", "दिखने की सीमा", `₹${ceiling.toFixed(2)}`, ceiling, "INR", "cluster_model", "Above this, buyers stop finding you"),
     step(
-      "सुरक्षा दाम — Your survival price",
-      "सुरक्षा दाम",
-      `₹${Number.isFinite(floor) ? floor.toFixed(2) : "—"}`,
-      floor,
-      "INR",
-      "derived",
-      "Below this, every parcel costs you money",
-    ),
-    step(
-      "दिखने की सीमा — Visibility ceiling",
-      "दिखने की सीमा",
-      `₹${ceiling.toFixed(2)}`,
-      ceiling,
-      "INR",
-      "cluster_model",
-      "Above this, buyers stop finding you",
-    ),
-    step(
-      widthRupees > 0 ? "Room between them" : "The floor is above the ceiling",
-      widthRupees > 0 ? "बीच की जगह" : "सुरक्षा दाम, सीमा से ऊपर है",
-      `₹${ceiling.toFixed(2)} − ₹${Number.isFinite(floor) ? floor.toFixed(2) : "—"}`,
+      widthRupees > 0 ? "Room between them" : "No room: the floor is above the ceiling",
+      widthRupees > 0 ? "बीच की जगह" : "कोई जगह नहीं",
+      `₹${ceiling.toFixed(2)} − ₹${bandLow.toFixed(2)} = ${(widthPct * 100).toFixed(1)}% of the ceiling`,
       widthRupees,
       "INR",
       "derived",
-      widthRupees > 0
-        ? "Any price in here both covers your costs and gets seen"
-        : "No price does both. The cost has to come down before this can be listed.",
+      widthRupees > 0 ? "Any price in here both covers your costs and gets seen" : "No price does both. The cost has to come down first.",
     ),
-    step(
-      "Your price today",
-      "आपका आज का दाम",
-      `₹${price.toFixed(2)}`,
-      price,
-      "INR",
-      "seller_input",
-    ),
-  ];
-
-  return traced(analysis, trace);
+    step("Your price today", "आपका आज का दाम", `₹${price.toFixed(2)}`, price, "INR", "seller_input"),
+  ]);
 }
+
+export const LAUNCH_COPY: Record<LaunchVerdict, { label: string; labelHi: string; tone: "danger" | "warning" | "success" | "info" }> = {
+  DONT_LIST: { label: "Don't list yet", labelHi: "अभी मत डालें", tone: "danger" },
+  DIFFERENTIATE: { label: "Differentiate first", labelHi: "पहले अलग बनाएँ", tone: "warning" },
+  PROFIT_MAX: { label: "Launch at the best price", labelHi: "सबसे अच्छे दाम पर डालें", tone: "success" },
+  PRICE_FOR_MARGIN: { label: "Price for margin", labelHi: "मुनाफ़े के लिए दाम", tone: "info" },
+};
 
 export const VERDICT_COPY: Record<
   BandVerdict,

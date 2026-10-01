@@ -60,6 +60,7 @@ export const RETURN_RATE_BY_CATEGORY: Record<string, number> = {
   "kitchen-storage": 0.06,
   "phone-cover": 0.07,
   "jewellery-set": 0.12,
+  dupatta: 0.16,
 };
 
 /**
@@ -128,6 +129,21 @@ export const GST_ON_FEES = 0.18;
  */
 export const AD_SPEND_RATE_DEFAULT = 0.05;
 
+/**
+ * Related categories, for the category × weight prior a listing falls back on
+ * when it has no catalogue twins (a zari dupatta borrows from ethnic apparel).
+ */
+export const CATEGORY_FAMILY: Record<string, string[]> = {
+  dupatta: ["saree", "kurti", "jewellery-set"],
+  kurti: ["co-ord-set", "saree"],
+  saree: ["kurti"],
+  "co-ord-set": ["kurti"],
+  bedsheet: ["kitchen-storage"],
+  "kitchen-storage": ["bedsheet"],
+  "phone-cover": ["jewellery-set"],
+  "jewellery-set": ["phone-cover"],
+};
+
 // --- demand ---------------------------------------------------------------
 
 /**
@@ -144,6 +160,7 @@ export const ELASTICITY_BY_CATEGORY: Record<string, number> = {
   "kitchen-storage": 2.4,
   "phone-cover": 2.0,
   "jewellery-set": 2.2,
+  dupatta: 2.6,
 };
 
 /**
@@ -208,6 +225,12 @@ export const PINCODE_TIERS = [
   { tier: 3, share: 0.33, rtoMultiplier: 1.14, codPropensity: 0.87 },
   { tier: 4, share: 0.14, rtoMultiplier: 1.31, codPropensity: 0.92 },
 ] as const;
+
+/**
+ * Safety margin above break-even. The band starts at floor × (1 + m), so a
+ * price at the bottom of the band still survives one bad week. Seller-adjustable.
+ */
+export const BAND_MARGIN = 0.03;
 
 // --- day-zero uncertainty ------------------------------------------------
 

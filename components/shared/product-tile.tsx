@@ -1,4 +1,4 @@
-import { BedDouble, CookingPot, Flower2, Gem, Layers, Shirt, Smartphone, type LucideIcon } from "lucide-react";
+import { BedDouble, CookingPot, Flower2, Gem, Layers, Shirt, Smartphone, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { Category } from "@/engine/types";
 
@@ -20,6 +20,7 @@ const GLYPH: Record<Category, LucideIcon> = {
   "kitchen-storage": CookingPot,
   "phone-cover": Smartphone,
   "jewellery-set": Gem,
+  dupatta: Sparkles,
 };
 
 /** Ink per colour family — muted, so a grid of tiles never turns into confetti. */

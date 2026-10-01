@@ -14,6 +14,7 @@ import { contributionPerOrder, paidFraction, survivalPrice, type CostInputs } fr
 import { buildWaterfall } from "../engine/waterfall";
 import { monthlyContribution, profitMaxPrice } from "../engine/launch";
 import { floorBand, probFloorAbove, rtoForCodShare } from "../engine/uncertainty";
+import { resolveNewListingMarket } from "../lib/new-listing-market";
 import { REFERENCE_AFTER, REFERENCE_BEFORE, REFERENCE_CEILING, REFERENCE_DEMAND } from "../engine/reference";
 import { priceShare, visibilityGate } from "../engine/demand";
 import { findTwins } from "../engine/twins";
@@ -119,6 +120,17 @@ checkEq("after: priced at 400 is above the gate", classifyBand(floor2, CEILING, 
 checkEq("thin band verdict", classifyBand(340, 352, 345).value.verdict, "THIN");
 checkEq("contribution at the floor is zero", Math.round(contributionPerOrder(floor2, A).value), 0);
 
+section("Band rule — [floor × (1 + m), ceiling], m = 3%");
+const bandAfter = classifyBand(survivalPrice(A).value, CEILING, 334).value;
+check("band low after unlocks", bandAfter.bandLow, 322.2, 0.5);
+check("band high (ceiling)", bandAfter.widthRupees + bandAfter.bandLow, 352, 0.01);
+checkEq("after unlocks: launch verdict", bandAfter.launch, "PROFIT_MAX");
+const launchP = profitMaxPrice(A, REFERENCE_DEMAND, bandAfter.bandLow, CEILING).value;
+checkEq("launch at ₹333–334", launchP >= 333 && launchP <= 334, true);
+checkEq("before unlocks: DON'T LIST", classifyBand(survivalPrice(B).value, CEILING, 305).value.launch, "DONT_LIST");
+checkEq("0–5% band → DIFFERENTIATE", classifyBand(330, 352, 340).value.launch, "DIFFERENTIATE");
+checkEq(">15% band → PRICE FOR MARGIN", classifyBand(250, 352, 300).value.launch, "PRICE_FOR_MARGIN");
+
 section("Ceiling estimation");
 const rivals: CompetitorListing[] = [
   { id: "a", clusterId: "c", price: 329, rating: 4.2, orderShare: 0.42 },
@@ -146,6 +158,18 @@ section("Recommended price sits inside the band");
 const rec = recommendedPrice(floor2, CEILING);
 checkEq("recommendation is above the floor", rec > floor2, true);
 checkEq("recommendation is below the ceiling", rec < CEILING, true);
+
+section("New listing — no twins falls back to a category prior");
+{
+  const w0 = buildEmptyWorld(230540);
+  const seller = w0.sellers[0]!;
+  const dup = resolveNewListingMarket(w0, { seller, category: "dupatta", cogs: 140, grams: 300 });
+  checkEq("zari dupatta has no twins → CATEGORY_PRIOR", dup.route, "CATEGORY_PRIOR");
+  checkEq("its ceiling is shown as a ±10% range", !!dup.ceilingRange && Math.abs(dup.ceilingRange.high / dup.ceiling.value - 1.1) < 1e-9, true);
+  const kur = resolveNewListingMarket(w0, { seller, category: "kurti", cogs: 100, grams: 450 });
+  checkEq("a kurti finds twins → TWINS", kur.route, "TWINS");
+  checkEq("day-zero floor is a range", kur.range.value.high > kur.range.value.low, true);
+}
 
 section("Determinism  —  same seed, same world");
 const r1 = makeRng(230540);

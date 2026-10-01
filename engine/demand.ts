@@ -98,12 +98,19 @@ export function ordersPerDay(
   day: number,
   seed: number,
 ): Traced<number> {
+  const noise = lognormal(rngFor(seed, listing.id, day), 1, 0.22);
+  if (cluster.demandPrior) {
+    // A measured curve for this design: use it directly.
+    const v = priorOrdersPerDay(listing.price, cluster.demandPrior) * seasonalMultiplier(cluster, day) * stockFactor(listing.inventory) * noise;
+    return traced(Math.max(0, v), [
+      step("Orders a day at this price", "इस दाम पर रोज़ के ऑर्डर", `measured demand curve for this design at ₹${listing.price}`, v, "COUNT", "cluster_model", "From look-alike listings' own sales"),
+    ]);
+  }
   const base = clusterDailyDemand(cluster, day);
   const share = priceShare(listing.price, rivals, cluster.elasticity);
   const gate = visibilityGate(listing.price, ceiling);
   const rating = ratingFactor(listing.rating);
   const stock = stockFactor(listing.inventory);
-  const noise = lognormal(rngFor(seed, listing.id, day), 1, 0.22);
 
   const value = base * share * gate * rating * stock * noise;
 
@@ -177,6 +184,10 @@ export function demandCurve(
   day: number,
   prices: number[],
 ): { price: number; ordersPerMonth: number }[] {
+  if (cluster.demandPrior) {
+    const prior = cluster.demandPrior;
+    return prices.map((price) => ({ price, ordersPerMonth: priorOrdersPerDay(price, prior) * 30 }));
+  }
   const base = clusterDailyDemand(cluster, day);
   const rating = ratingFactor(listing.rating);
   const stock = stockFactor(listing.inventory);

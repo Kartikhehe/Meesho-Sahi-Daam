@@ -16,7 +16,9 @@ export type Category =
   | "bedsheet"
   | "kitchen-storage"
   | "phone-cover"
-  | "jewellery-set";
+  | "jewellery-set"
+  /** No clusters are generated for it: the day-zero, no-twins case. */
+  | "dupatta";
 
 /** How a seller prices, derived from behaviour — never assigned by hand. */
 export type Archetype =
@@ -58,6 +60,11 @@ export type DesignCluster = {
   /** Softmax temperature on −elasticity × ln(price). */
   elasticity: number;
   attributes: AttributeVector;
+  /**
+   * A measured demand curve for this design, when one exists (the deck's
+   * reference kurti). When present it replaces the softmax-share model.
+   */
+  demandPrior?: import("./demand").DemandPrior;
 };
 
 /** The real attribute vector the twin retriever runs cosine similarity over. */
@@ -183,12 +190,19 @@ export type BandVerdict =
   | "ABOVE_GATE" // above the ceiling: findable, but not found
   | "NO_BAND"; // floor above ceiling — no price works
 
+export type LaunchVerdict = "DONT_LIST" | "DIFFERENTIATE" | "PROFIT_MAX" | "PRICE_FOR_MARGIN";
+
 export type BandAnalysis = {
   floor: number;
   ceiling: number;
   price: number;
   verdict: BandVerdict;
-  /** Ceiling − floor. Negative when the band is inverted. */
+  /** floor × (1 + margin): the bottom of the band. */
+  bandLow: number;
+  margin: number;
+  /** What to do with a new listing in this band. */
+  launch: LaunchVerdict;
+  /** Ceiling − bandLow. Negative when no price works. */
   widthRupees: number;
   widthPct: number;
   recommended: number;

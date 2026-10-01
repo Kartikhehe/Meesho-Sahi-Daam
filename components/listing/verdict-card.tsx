@@ -1,286 +1,157 @@
 "use client";
 
 /**
- * The verdict card — step 3 of the new-listing wizard.
+ * The verdict — step 3 of the new-listing wizard. Four outcomes, chosen by how
+ * wide the band [floor × (1 + m), ceiling] is, all designed with equal care:
  *
- * Three outcomes, designed with equal care:
- *   LIST            — here is your band and a launch price
- *   DIFFERENTIATE   — the band is under 5%; price alone will not win this
- *   DON'T LIST YET  — the floor is above the ceiling; name the lever and the
- *                     exact amount it must move
+ *   DON'T LIST YET     no price both pays and gets seen — name the lever
+ *   DIFFERENTIATE      a band under 5%; price alone will not win it
+ *   LAUNCH             5–15%: launch at the profit-maximising price
+ *   PRICE FOR MARGIN   over 15%: plenty of room, and a design for sourcing (C2M)
  *
- * The third is the product's best idea. No other pricing tool says it, because
- * saying "don't sell this" feels like failure — but it is the only honest
- * answer when the cost floor sits above the visibility ceiling, and it is the
- * one that saves a seller from three months of quiet losses.
+ * On day zero every rate is borrowed, so the floor is shown as a range and the
+ * verdict carries its own confidence.
  */
 
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { Amount } from "@/components/shared/amount";
-import { VerdictShell, GapEquation } from "./verdict-shell";
 import { Button } from "@/components/ui/button";
 import { DaamMeter } from "@/components/charts/daam-meter";
-import { MoneyValue } from "@/components/shared/money-value";
-import { survivalPrice, type CostInputs } from "@/engine/cost";
-import { RTO_BY_COD } from "@/engine/constants";
-import type { Traced } from "@/engine/trace";
-import type { BandAnalysis } from "@/engine/types";
+import { MoneyValue, TraceLink } from "@/components/shared/money-value";
+import { Callout } from "@/components/shared/callout";
+import { MeeshoScope } from "@/components/shared/meesho-scope";
+import { VoicePreview } from "@/components/shared/voice-preview";
+import { VerdictShell } from "./verdict-shell";
+import { DontListBody } from "./dont-list";
+import { rankLevers } from "./levers";
+import { verdictScript } from "@/content/voice";
+import type { NewListingMarket } from "@/lib/new-listing-market";
 import { inr, pct } from "@/lib/format";
 
-export type Verdict = "LIST" | "DIFFERENTIATE" | "DONT_LIST";
-
-export function verdictFor(band: BandAnalysis): Verdict {
-  if (band.widthRupees <= 0) return "DONT_LIST";
-  if (band.widthPct < 0.05) return "DIFFERENTIATE";
-  return "LIST";
-}
-
-/**
- * How far one lever must move, on its own, to close the gap.
- *
- * Solved numerically rather than algebraically: the survival price is not
- * linear in any of these inputs (they appear in both the numerator and the
- * denominator), so we walk the lever until the floor clears the ceiling. That
- * also means the answer stays correct if the cost model changes.
- */
-export function leverToClose(
-  inputs: CostInputs,
-  ceiling: number,
-  codShare: number,
-): { lever: string; leverHi: string; from: string; to: string; detail: string } | null {
-  const target = ceiling * 0.97; // clear it with a little room, not exactly
-
-  // Each lever is searched only within a move a seller could plausibly make.
-  // Without these bounds the search happily reports "cut your cost of goods by
-  // 94%", which is arithmetically true and useless as advice — and worse, it
-  // dresses up an impossible gap as an actionable one. If nothing inside the
-  // bounds closes the gap, we say so instead.
-  const MAX_COGS_CUT = 0.35; // a third off is already a hard renegotiation
-  const MIN_RETURN_RATE = 0.04;
-  const MAX_RETURN_CUT = 0.12; // 12 percentage points is a very good year
-  const MIN_COD_SHARE = 0.25;
-
-  // 1. Cost of goods.
-  const cogsFloor = inputs.cogs * (1 - MAX_COGS_CUT);
-  for (let c = inputs.cogs; c >= cogsFloor; c -= 1) {
-    if (survivalPrice({ ...inputs, cogs: c }).value <= target) {
-      return {
-        lever: "What your goods cost",
-        leverHi: "माल की लागत",
-        from: inr(inputs.cogs),
-        to: inr(c),
-        detail: `Buying this design ${inr(inputs.cogs - c)} cheaper is enough on its own — that is ${pct((inputs.cogs - c) / inputs.cogs, 0)} off what you pay your supplier.`,
-      };
-    }
-  }
-
-  // 2. Returns.
-  const returnFloor = Math.max(MIN_RETURN_RATE, inputs.returnRate - MAX_RETURN_CUT);
-  for (let r = inputs.returnRate; r >= returnFloor; r -= 0.005) {
-    if (survivalPrice({ ...inputs, returnRate: r }).value <= target) {
-      return {
-        lever: "How often things come back",
-        leverHi: "कितना सामान वापस आता है",
-        from: pct(inputs.returnRate),
-        to: pct(r),
-        detail: `Getting returns down by ${pct(inputs.returnRate - r)} would do it on its own. A real size chart usually moves this by 3 to 6 points.`,
-      };
-    }
-  }
-
-  // 3. Cash on delivery share, which drives the refusal rate.
-  for (let cod = codShare; cod >= MIN_COD_SHARE; cod -= 0.02) {
-    const rto = (cod * RTO_BY_COD.cod + (1 - cod) * RTO_BY_COD.prepaid) * RTO_BY_COD.dampening;
-    if (survivalPrice({ ...inputs, rtoRate: rto }).value <= target) {
-      return {
-        lever: "How many pay cash on delivery",
-        leverHi: "कितने ग्राहक कैश पर लेते हैं",
-        from: pct(codShare, 0),
-        to: pct(cod, 0),
-        detail: `Shifting ${pct(codShare - cod, 0)} of your buyers to paying in advance would be enough. A small prepaid discount is the usual way.`,
-      };
-    }
-  }
-
-  return null;
-}
-
 export function VerdictCard({
-  band,
-  floor,
-  inputs,
-  ceiling,
+  market,
   codShare,
+  plannedPrice,
   onList,
   onBack,
 }: {
-  band: BandAnalysis;
-  floor: Traced<number>;
-  inputs: CostInputs;
-  ceiling: number;
+  market: NewListingMarket;
   codShare: number;
+  /** The price she had in mind, if any — shown against the verdict. */
+  plannedPrice?: number;
   onList: (price: number) => void;
   onBack: () => void;
 }) {
-  const verdict = verdictFor(band);
+  const band = market.band.value;
+  const range = market.range.value;
+  const launch = market.launch?.value ?? 0;
+  const ceiling = market.ceiling.value;
+  const levers = rankLevers(market.inputs, ceiling, codShare, band.margin);
+  const script = verdictScript(band.launch, { floor: band.floor, ceiling, launch, lever: levers[0]?.leverHi });
+  const listAt = launch || Math.round(band.bandLow);
 
   return (
     <div className="space-y-4">
       <Card className="p-4 sm:p-5">
-        <DaamMeter band={band} />
+        <DaamMeter band={{ ...band, price: plannedPrice ?? listAt, recommended: launch }} />
       </Card>
 
-      {verdict === "LIST" ? (
-        <VerdictShell tone="success" verdictHi="यह सामान डाल सकते हैं" verdict="You can list this — there is real room to work with">
-          <p className="type-body text-[var(--text)]">
-            Any price between{" "}
-            <MoneyValue value={floor.value} traced={floor} label="Your survival price" labelHi="सुरक्षा दाम" size="md" />{" "}
-            and <strong className="font-semibold">{inr(ceiling)}</strong> covers what it costs you to ship and still
-            gets you found.
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-4 rounded-[var(--radius-input)] bg-[var(--surface-sunken)] px-4 py-3">
-            <div>
-              <p className="hi text-[12.5px] font-medium text-[var(--text-muted)]">सुझाया दाम · Launch at</p>
-              <Amount value={band.recommended} size="figure" />
-            </div>
-            <p className="type-caption min-w-[12rem] flex-1 text-[var(--text-muted)]">
-              Low enough to be seen while you have no reviews yet; high enough that a small cost change will not sink it.
-            </p>
-          </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Button variant="primary" onClick={() => onList(band.recommended)}>
-              List at {inr(band.recommended)}
-            </Button>
-            <Button variant="secondary" onClick={onBack}>
-              Change my numbers
-            </Button>
-          </div>
-        </VerdictShell>
+      {market.route === "CATEGORY_PRIOR" ? (
+        <Callout tone="info" titleHi="कोई मिलता-जुलता सामान नहीं" title="No close look-alikes — so this is a wider guess">
+          Nothing in the catalogue is close enough to this product, so the ceiling is borrowed from related categories
+          at a similar parcel weight and shown as a range:{" "}
+          <strong className="font-semibold">
+            {inr(market.ceilingRange?.low ?? ceiling)} – {inr(market.ceilingRange?.high ?? ceiling)}
+          </strong>
+          . Tagged <strong className="font-semibold">NEW / THIN</strong>: the price ladder tests ±10% instead of the
+          usual ±6% until real orders arrive.
+        </Callout>
       ) : null}
 
-      {verdict === "DIFFERENTIATE" ? (
-        <VerdictShell tone="warning" verdictHi="सिर्फ़ दाम से नहीं जीत पाएँगे" verdict="Price alone will not win this one">
+      <Card tone="sunken" className="p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-[13px] font-medium text-[var(--text)]">
+            <span className="hi">आपका सुरक्षा दाम</span>
+            <span className="text-[var(--text-muted)]"> · your floor, {Math.round(range.confidence * 100)}% range</span>
+          </p>
+          <p className="tabular text-[17px] font-semibold text-[var(--text)]">
+            {inr(range.low)} – {inr(range.high)}
+          </p>
+        </div>
+        <p className="type-caption mt-1.5 text-[var(--text-muted)]">
+          You have no orders yet, so return and refusal rates are borrowed from{" "}
+          {market.route === "TWINS" ? "look-alike listings" : "related categories"} and the floor is a range that
+          narrows as your own orders arrive.{" "}
+          {band.launch === "DONT_LIST" ? (
+            <strong className="text-[var(--danger)]">{pct(market.pNoBand, 0)} likely no viable price.</strong>
+          ) : market.pNoBand > 0.05 ? (
+            <strong className="text-[var(--warning)]">{pct(market.pNoBand, 0)} chance there is no viable price after all.</strong>
+          ) : null}{" "}
+          <TraceLink traced={{ value: range.halfWidth, trace: market.range.trace, assumptions: [] }} label="Why a range" labelHi="सीमा क्यों" />
+        </p>
+      </Card>
+
+      {band.launch === "DONT_LIST" ? (
+        <DontListBody market={market} levers={levers} plannedPrice={plannedPrice} onBack={onBack} onList={onList} />
+      ) : null}
+
+      {band.launch === "DIFFERENTIATE" ? (
+        <VerdictShell tone="warning" verdictHi="पहले अलग बनाइए" verdict="Differentiate first — price alone will not win this one">
           <p className="type-body text-[var(--text)]">
             There is a band, but it is only <strong className="font-semibold">{inr(band.widthRupees)}</strong> wide —
-            about {pct(band.widthPct, 0)} of the price. One rival dropping {inr(Math.ceil(band.widthRupees))} closes it,
-            and a single freight change wipes it out.
+            about {pct(band.widthPct, 0)} of the ceiling. One rival dropping {inr(Math.ceil(band.widthRupees))} closes
+            it, and a single freight change wipes it out.
           </p>
-          <p className="type-overline mt-5 text-[var(--text-subtle)]">What would change this</p>
-          <ul className="mt-2 space-y-2">
-            {[
-              ["Make it look different", "A better fabric, a fuller flare, a genuinely different print — something buyers can see in the photo. That moves you out of this crowd."],
-              ["Bring the cost down", "Lower cost widens the band from below. The cost simulator shows by how much."],
-              ["Sell it as a set", "A bundle is not directly comparable to a single piece, so it escapes the price grid."],
-            ].map(([t, d]) => (
-              <li key={t} className="flex gap-3">
-                <span aria-hidden className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]" />
-                <p className="type-small text-[var(--text-muted)]">
-                  <strong className="font-semibold text-[var(--text)]">{t}.</strong> {d}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <p className="type-small mt-3 text-[var(--text-muted)]">
+            Change something buyers can see in the photo (fabric, cut, print), bring the cost down to widen the band
+            from below, or sell it as a set so it escapes the price grid.
+          </p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/unlock">
-              <Button variant="primary">Try the cost simulator</Button>
-            </Link>
-            <Button variant="secondary" onClick={() => onList(band.recommended)}>
-              List anyway at {inr(band.recommended)}
-            </Button>
-            <Button variant="ghost" onClick={onBack}>
-              Change my numbers
-            </Button>
+            <Link href="/unlock"><Button variant="primary">Try the cost simulator</Button></Link>
+            <Button variant="secondary" onClick={() => onList(listAt)}>List anyway at {inr(listAt)}</Button>
+            <Button variant="ghost" onClick={onBack}>Change my numbers</Button>
           </div>
         </VerdictShell>
       ) : null}
 
-      {verdict === "DONT_LIST" ? (
-        <DontListCard floor={floor} inputs={inputs} ceiling={ceiling} codShare={codShare} onBack={onBack} onList={onList} />
-      ) : null}
-    </div>
-  );
-}
-
-function DontListCard({
-  floor,
-  inputs,
-  ceiling,
-  codShare,
-  onBack,
-  onList,
-}: {
-  floor: Traced<number>;
-  inputs: CostInputs;
-  ceiling: number;
-  codShare: number;
-  onBack: () => void;
-  onList: (price: number) => void;
-}) {
-  const gap = floor.value - ceiling;
-  const lever = leverToClose(inputs, ceiling, codShare);
-
-  return (
-    <VerdictShell tone="danger" verdictHi="अभी यह सामान मत डालें" verdict="Don't list this one yet — here is exactly why">
-      <GapEquation
-        items={[
-          {
-            labelHi: "आपकी लागत",
-            label: "What it costs you to break even",
-            value: <MoneyValue value={floor.value} traced={floor} label="What this listing costs you to serve" labelHi="सुरक्षा दाम" size="lg" />,
-          },
-          { labelHi: "ग्राहक यहाँ तक देखते हैं", label: "Where buyers stop looking", value: <Amount value={ceiling} size="lg" /> },
-          { labelHi: "फ़ासला", label: "The gap", value: <Amount value={gap} size="lg" tone="danger" /> },
-        ]}
-      />
-
-      <p className="type-body mt-4 text-[var(--text)]">
-        This is not a pricing problem, so no price fixes it. List at a price buyers will see and you lose about{" "}
-        <strong className="font-semibold text-[var(--danger)]">{inr(gap)}</strong> on every parcel. List at a price
-        that pays, and almost nobody sees it.
-      </p>
-
-      <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--border)] p-4">
-        <p className="type-overline text-[var(--text-subtle)]">What would have to change</p>
-        {lever ? (
-          <>
-            <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+      {band.launch === "PROFIT_MAX" || band.launch === "PRICE_FOR_MARGIN" ? (
+        <VerdictShell
+          tone="success"
+          verdictHi={band.launch === "PROFIT_MAX" ? "यह सामान डाल सकते हैं" : "मुनाफ़े के लिए दाम रखिए"}
+          verdict={band.launch === "PROFIT_MAX" ? "List it — at the price that earns most" : "Price for margin — there is plenty of room"}
+        >
+          <p className="type-body text-[var(--text)]">
+            Any price from <strong className="font-semibold">{inr(band.bandLow)}</strong> to{" "}
+            <strong className="font-semibold">{inr(ceiling)}</strong> covers your cost with a {pct(band.margin, 0)} cushion
+            and still gets you found.
+          </p>
+          {market.launch ? (
+            <div className="mt-4 flex flex-wrap items-center gap-4 rounded-[var(--radius-input)] bg-[var(--surface-sunken)] px-4 py-3">
               <div>
-                <p className="hi text-[15px] font-semibold text-[var(--text)]">{lever.leverHi}</p>
-                <p className="type-caption text-[var(--text-muted)]">{lever.lever}</p>
+                <p className="hi text-[12.5px] font-medium text-[var(--text-muted)]">शुरुआती दाम · Launch at</p>
+                <MoneyValue value={launch} traced={market.launch} label="Launch price" labelHi="शुरुआती दाम" size="xl" />
               </div>
-              <p className="tabular flex items-baseline gap-2 text-[20px] font-semibold">
-                <span className="text-[var(--text-muted)] line-through decoration-[1.5px]">{lever.from}</span>
-                <span aria-hidden className="text-[var(--text-subtle)]">→</span>
-                <span className="text-[var(--success)]">{lever.to}</span>
+              <p className="type-caption min-w-[12rem] flex-1 text-[var(--text-muted)]">
+                The price that earns most inside the band, under the look-alikes&rsquo; demand. Your price ladder then
+                tests a rung either side with real orders and settles it.
               </p>
             </div>
-            <p className="type-small mt-2 text-[var(--text-muted)]">{lever.detail}</p>
-          </>
-        ) : (
-          <p className="type-small mt-2 text-[var(--text-muted)]">
-            No single change closes a gap this wide on its own — it would take several at once. The cost simulator lets
-            you move all four together and see what it would take.
-          </p>
-        )}
-      </div>
+          ) : null}
+          {band.launch === "PRICE_FOR_MARGIN" ? (
+            <Callout tone="info" className="mt-4" title="Flagged to sourcing (C2M)">
+              A band over 15% wide is unusual — this design earns well at most prices, so it has been flagged to the
+              sourcing team as one to make more of. Expect rivals to notice and the band to narrow.
+            </Callout>
+          ) : null}
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button variant="primary" onClick={() => onList(listAt)}>List at {inr(listAt)}</Button>
+            <Button variant="secondary" onClick={onBack}>Change my numbers</Button>
+          </div>
+        </VerdictShell>
+      ) : null}
 
-      <div className="mt-5 flex flex-wrap gap-2">
-        <Link href="/unlock">
-          <Button variant="primary">Show me what would open a band</Button>
-        </Link>
-        <Button variant="secondary" onClick={onBack}>
-          Change my numbers
-        </Button>
-      </div>
-
-      <p className="type-caption mt-4 border-t border-[var(--border)] pt-3 text-[var(--text-subtle)]">
-        We will not stop you. If you want to go ahead anyway,{" "}
-        <button type="button" onClick={() => onList(Math.round(ceiling))} className="link">
-          list at {inr(Math.round(ceiling))}
-        </button>{" "}
-        — just go in knowing what each parcel will cost you.
-      </p>
-    </VerdictShell>
+      <VoicePreview script={script} />
+      <MeeshoScope />
+    </div>
   );
 }

@@ -13,6 +13,7 @@ import { costInputsFor } from "@/engine/clock";
 import { contributionPerOrder, survivalPrice, type CostInputs } from "@/engine/cost";
 import { visibilityGate } from "@/engine/demand";
 import { daamScore } from "@/engine/score";
+import { bestPriceInBand } from "@/engine/launch";
 import { RETURN_WRITEDOWN } from "@/engine/constants";
 import type { Funnel } from "@/engine/waterfall";
 import type { Traced } from "@/engine/trace";
@@ -41,18 +42,48 @@ export type ListingAnalysis = {
   /** Negative when losing money — the number the home screen ranks by. */
   monthlyRisk: number;
   visibility: number;
+  /** The profit-maximising launch price inside the band, when one exists. */
+  launch: Traced<number> | null;
+  /** True when an upward suggestion was held back by the Buyer Price Index gate. */
+  upwardHeld: boolean;
 };
 
-export function analyseListing(world: World, listing: Listing): ListingAnalysis | null {
+/** Settings that change what the analysis says. Defaults come from constants. */
+export type AnalysisOptions = {
+  /** Safety margin above break-even (m). */
+  margin?: number;
+  /** Buyer Price Index gate breached: hold back any suggestion that raises a price. */
+  upwardPaused?: boolean;
+};
+
+export function analyseListing(
+  world: World,
+  listing: Listing,
+  opts: AnalysisOptions = {},
+): ListingAnalysis | null {
   const seller = world.sellers.find((s) => s.id === listing.sellerId);
   if (!seller) return null;
 
   const rivals = world.competitors.filter((c) => c.clusterId === listing.clusterId);
+  const cluster = world.clusters.find((c) => c.id === listing.clusterId);
   const inputs = costInputsFor(listing, seller);
   const floor = survivalPrice(inputs);
   const ceiling = estimateCeiling(rivals);
-  const band = classifyBand(floor.value, ceiling.value, listing.price);
+  const band = classifyBand(floor.value, ceiling.value, listing.price, opts.margin);
   const contribution = contributionPerOrder(listing.price, inputs);
+
+  // The suggestion is the profit-maximising price inside the band, under this
+  // design's demand model — not a fixed fraction of the band.
+  const launch =
+    cluster && band.value.widthRupees > 0
+      ? bestPriceInBand(listing, cluster, rivals, ceiling.value, world.day, inputs, band.value.bandLow, ceiling.value)
+      : null;
+  if (launch && launch.value > 0) band.value.recommended = launch.value;
+
+  // Buyer Price Index guardrail: while it is breached, no suggestion may raise
+  // a price. Suggestions that lower one still stand — those help buyers too.
+  const upwardHeld = !!opts.upwardPaused && band.value.recommended > listing.price;
+  if (upwardHeld) band.value.recommended = listing.price;
 
   const ordersLast30 = world.orders.filter(
     (o) => o.listingId === listing.id && o.day > world.day - 30,
@@ -81,6 +112,8 @@ export function analyseListing(world: World, listing: Listing): ListingAnalysis 
     monthlyContribution,
     monthlyRisk: monthlyContribution < 0 ? monthlyContribution : 0,
     visibility,
+    launch,
+    upwardHeld,
   };
 }
 
@@ -88,9 +121,9 @@ export function listingsFor(world: World, sellerId: string): Listing[] {
   return world.listings.filter((l) => l.sellerId === sellerId);
 }
 
-export function analyseSeller(world: World, sellerId: string): ListingAnalysis[] {
+export function analyseSeller(world: World, sellerId: string, opts: AnalysisOptions = {}): ListingAnalysis[] {
   return listingsFor(world, sellerId)
-    .map((l) => analyseListing(world, l))
+    .map((l) => analyseListing(world, l, opts))
     .filter((a): a is ListingAnalysis => a !== null);
 }
 
