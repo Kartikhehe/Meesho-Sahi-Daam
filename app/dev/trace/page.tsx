@@ -29,7 +29,7 @@ const CASE_1: CostInputs = {
   returnRate: 0.2,
   adSpendRate: 0.05,
   forwardFreight: 65,
-  reverseFreight: 75.6,
+  reverseFreight: 153,
   packaging: 8,
 };
 
@@ -56,8 +56,8 @@ export default function TraceDevPage() {
 
   /** Re-solve with one assumption moved, for the drawer's sensitivity row. */
   const probe = (key: string, multiplier: number): number | null => {
-    if (key === "returnWritedown")
-      return survivalPrice({ ...CASE_1, returnWritedown: 0.15 * multiplier }).value;
+    if (key === "recovery")
+      return survivalPrice({ ...CASE_1, recovery: 1 - 0.17 * multiplier }).value;
     if (key === "gstOnFees") return survivalPrice({ ...CASE_1, gstOnFees: 0.18 * multiplier }).value;
     return null;
   };

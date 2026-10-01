@@ -102,11 +102,14 @@ export function settlementFor(
   const reverse = forward * REVERSE_FREIGHT_MULTIPLIER;
   const paid = order.outcome === "delivered";
 
+  // Forward freight is charged on delivered units only: a refused parcel's is
+  // credited back. The return leg is charged on customer returns only — the
+  // refused-parcel return leg is borne by Valmo. GST applies to the forward
+  // fee and to ads, matching the cost model exactly.
   const forwardFreightReversed = order.outcome === "rto" ? forward : 0;
-  const reverseFreight = paid ? 0 : reverse;
+  const reverseFreight = order.outcome === "returned" ? reverse : 0;
   const adCost = order.price * (seller.adSpendRate ?? AD_SPEND_RATE_DEFAULT);
-  const feeBase = forward - forwardFreightReversed + reverseFreight + adCost;
-  const gst = feeBase * GST_ON_FEES;
+  const gst = (forward - forwardFreightReversed + adCost) * GST_ON_FEES;
 
   const saleValue = paid ? order.price : 0;
   const netCredit =

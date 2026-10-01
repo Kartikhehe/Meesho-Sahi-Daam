@@ -12,6 +12,9 @@ import { classifyBand, recommendedPrice } from "../engine/band";
 import { estimateCeiling } from "../engine/ceiling";
 import { contributionPerOrder, paidFraction, survivalPrice, type CostInputs } from "../engine/cost";
 import { buildWaterfall } from "../engine/waterfall";
+import { monthlyContribution, profitMaxPrice } from "../engine/launch";
+import { floorBand, probFloorAbove, rtoForCodShare } from "../engine/uncertainty";
+import { REFERENCE_AFTER, REFERENCE_BEFORE, REFERENCE_CEILING, REFERENCE_DEMAND } from "../engine/reference";
 import { priceShare, visibilityGate } from "../engine/demand";
 import { findTwins } from "../engine/twins";
 import { makeRng } from "../engine/rng";
@@ -52,48 +55,69 @@ function section(title: string) {
 
 // ---------------------------------------------------------------------------
 
-const BASE = { adSpendRate: 0.05, forwardFreight: 65, reverseFreight: 75.6, packaging: 8 };
-const CASE_1: CostInputs = { ...BASE, cogs: 180, rtoRate: 0.17, returnRate: 0.2 };
-const CASE_2: CostInputs = { ...BASE, cogs: 158, rtoRate: 0.12, returnRate: 0.13 };
+// ---------------------------------------------------------------------------
+// Golden numbers — the Round-2 deck, to the rupee.
+// ---------------------------------------------------------------------------
 
-section("Paid fraction  —  (1 − RTO) × (1 − returns)");
-check("case 1: RTO 17%, returns 20%", paidFraction(0.17, 0.2).value, 0.664, 0.001);
-check("case 2: RTO 12%, returns 13%", paidFraction(0.12, 0.13).value, 0.7656, 0.001);
+const B = REFERENCE_BEFORE;
+const A = REFERENCE_AFTER;
+const CASE_2 = A;
+const CEILING = REFERENCE_CEILING;
+const at = (o: Partial<CostInputs>) => survivalPrice({ ...B, ...o }).value;
+const perMonth = (price: number, i: CostInputs) => monthlyContribution(price, i, REFERENCE_DEMAND);
 
-section("Survival price  —  the floor");
-check("case 1: COGS 180", survivalPrice(CASE_1).value, 375, 0.5);
-// The brief states 313. Our formula is exact on case 1 and on every line of
-// the waterfall; case 2 differs by ~Rs 1.5 because of an inconsistency in the
-// brief's own case-2 arithmetic. See PROGRESS.md for the full reconciliation.
-check("case 2: COGS 158", survivalPrice(CASE_2).value, 313, 2);
+section("Golden · paid fraction and the floor");
+check("k = (1 − RTO)(1 − returns)", paidFraction(B.rtoRate, B.returnRate).value, 0.664, 0.0005);
+check("floor, before unlocks", survivalPrice(B).value, 374.98, 0.01);
+check("floor, after unlocks (COGS 158, returns 13%, COD 55%)", survivalPrice(A).value, 312.8, 0.05);
 
-section("Unit economics waterfall  —  price 305");
-const wf = buildWaterfall(305, CASE_1).value;
-const bar = (key: string) => wf.bars.find((b) => b.key === key)?.value ?? NaN;
-check("believed earnings", wf.believed, 52, 0.1);
-check("lost to RTO + returns", bar("failures"), -51.1, 0.2);
-check("forward freight reversed on RTO", bar("fwd-credit"), 11.05, 0.1);
-check("reverse freight", bar("reverse"), -25.4, 0.1);
-check("GST on platform fees", bar("gst"), -14.28, 0.15);
-check("ads", bar("ads"), -15.25, 0.1);
-check("reality", wf.reality, -42.9, 0.2);
-check("the gap", wf.gap, 94.9, 0.2);
-check("gap as share of price", wf.gapPctOfPrice * 100, 31.1, 0.5);
+section("Golden · contribution per dispatched parcel");
+check("Π(305), before", contributionPerOrder(305, B).value, -42.34, 0.01);
+check("Π(334), after", contributionPerOrder(334, A).value, 14.75, 0.01);
+check("Π(299), before — Imran's ₹46 an order", contributionPerOrder(299, B).value, -45.97, 0.01);
 
-section("Band classification  —  ceiling 352");
-const CEILING = 352;
-const floor1 = survivalPrice(CASE_1).value;
-const floor2 = survivalPrice(CASE_2).value;
-checkEq("case 1: floor 375 > ceiling 352", classifyBand(floor1, CEILING, 305).value.verdict, "NO_BAND");
-checkEq("case 2: floor 313 < ceiling 352, priced at 334", classifyBand(floor2, CEILING, 334).value.verdict, "HEALTHY");
-check("case 2: band width", classifyBand(floor2, CEILING, 334).value.widthRupees, 39, 2.5);
-checkEq("case 2: priced at 300 is below floor", classifyBand(floor2, CEILING, 300).value.verdict, "BELOW_FLOOR");
-checkEq("case 2: priced at 400 is above the gate", classifyBand(floor2, CEILING, 400).value.verdict, "ABOVE_GATE");
+section("Golden · six ways to price it (₹ / month)");
+check("₹449 — dies unseen", perMonth(449, B), 0, 10);
+check("₹299 — the matcher", perMonth(299, B), -47517, 1);
+check("₹305", perMonth(305, B), -39164, 1);
+check("₹329 — at the winning price", perMonth(329, B), -12350, 1);
+check("₹405", perMonth(405, B), 0, 50);
+check("₹334, after unlocks", perMonth(334, A), 5190, 1);
+check("profit-maximising price after unlocks", profitMaxPrice(A, REFERENCE_DEMAND, 300, 360).value, 333, 1);
+
+section("Golden · single-lever unlocks against ₹375");
+check("returns 20% → 13%", Math.round(at({ returnRate: 0.13 })), 342, 0);
+check("COGS 180 → 158", Math.round(at({ cogs: 158 })), 349, 0);
+check("COD 80% → 55%", Math.round(at({ rtoRate: rtoForCodShare(0.55) })), 371, 0);
+check("ads off", Math.round(at({ adSpendRate: 0 })), 342, 0);
+check("all three", Math.round(survivalPrice(A).value), 313, 0);
+
+section("Golden · cost ladder and sensitivity row (returns 20%)");
+for (const [cogs, want] of [[160, 351], [180, 375], [200, 399]] as const) check(`COGS ${cogs}`, Math.round(at({ cogs })), want, 0);
+const row = [210, 195, 180, 165, 150, 135].map((cogs) => Math.round(at({ cogs })));
+checkEq("row 20%: 411 393 375 357 339 321", row.join(" "), "411 393 375 357 339 321");
+
+section("Golden · day-zero band on the floor (80%)");
+for (const [n, want] of [[0, 28], [30, 20], [90, 14], [270, 9]] as const) {
+  check(`±₹ at ${n} own orders`, floorBand(B, n, 0.8).value.halfWidth, want, 0.6);
+}
+check("P(floor > ₹352) on day zero", probFloorAbove(floorBand(B, 0, 0.8).value, CEILING), 0.85, 0.01);
+
+section("Golden · the waterfall at ₹305 reconciles to Π(305)");
+const wf = buildWaterfall(305, B).value;
+check("believed earnings", wf.believed, 52, 0.001);
+check("reality equals Π(305)", wf.reality, contributionPerOrder(305, B).value, 0.001);
+check("the gap", wf.gap, 94.34, 0.01);
+
+section("Band classification — ceiling 352");
+const floor1 = survivalPrice(B).value;
+const floor2 = survivalPrice(A).value;
+checkEq("before: floor 375 > ceiling 352", classifyBand(floor1, CEILING, 305).value.verdict, "NO_BAND");
+checkEq("after: priced at 334 is inside the band", classifyBand(floor2, CEILING, 334).value.verdict, "HEALTHY");
+checkEq("after: priced at 300 is below floor", classifyBand(floor2, CEILING, 300).value.verdict, "BELOW_FLOOR");
+checkEq("after: priced at 400 is above the gate", classifyBand(floor2, CEILING, 400).value.verdict, "ABOVE_GATE");
 checkEq("thin band verdict", classifyBand(340, 352, 345).value.verdict, "THIN");
-
-section("Contribution per dispatched order");
-check("case 2 at ₹334", contributionPerOrder(334, CASE_2).value, 15, 1.5);
-checkEq("case 2 at floor is zero", Math.round(contributionPerOrder(floor2, CASE_2).value), 0);
+checkEq("contribution at the floor is zero", Math.round(contributionPerOrder(floor2, A).value), 0);
 
 section("Ceiling estimation");
 const rivals: CompetitorListing[] = [

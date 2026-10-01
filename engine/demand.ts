@@ -186,3 +186,31 @@ export function demandCurve(
     return { price, ordersPerMonth: Math.max(0, base * share * gate * rating * stock * 30) };
   });
 }
+
+// --- the twins' demand prior ------------------------------------------------
+
+/**
+ * A listing with no history borrows its demand curve from look-alikes:
+ *
+ *   orders/day = q₀ · (P / P_ref)^(−ε) ÷ (1 + e^((P − P_gate) / w))
+ *
+ * a constant-elasticity response around the price the twins trade at, times
+ * the same visibility cliff the cluster model uses. This is what "the
+ * profit-maximising price under the twins' demand prior" is maximised over.
+ */
+export type DemandPrior = {
+  /** Orders a day at the reference price, before the gate. */
+  q0: number;
+  /** The price the twins actually trade at. */
+  pRef: number;
+  /** Price elasticity (positive number). */
+  elasticity: number;
+  /** Where impressions fall off the cliff. */
+  gateCentre: number;
+  gateWidth: number;
+};
+
+export function priorOrdersPerDay(price: number, p: DemandPrior): number {
+  if (price <= 0) return 0;
+  return (p.q0 * Math.pow(price / p.pRef, -p.elasticity)) / (1 + Math.exp((price - p.gateCentre) / p.gateWidth));
+}

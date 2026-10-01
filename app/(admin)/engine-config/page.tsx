@@ -168,7 +168,7 @@ function blastRadius(world: World, overrides: Partial<Record<ConfigKey, number>>
     const after = survivalPrice({
       ...base,
       rtoRate: rto,
-      returnWritedown: overrides.returnWritedown ?? RETURN_WRITEDOWN,
+      recovery: 1 - (overrides.returnWritedown ?? RETURN_WRITEDOWN),
       gstOnFees: overrides.gstOnFees ?? GST_ON_FEES,
       reverseFreight:
         base.forwardFreight * (overrides.reverseFreightMultiplier ?? REVERSE_FREIGHT_MULTIPLIER),

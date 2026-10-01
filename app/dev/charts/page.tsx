@@ -28,7 +28,7 @@ const CASE_1: CostInputs = {
   returnRate: 0.2,
   adSpendRate: 0.05,
   forwardFreight: 65,
-  reverseFreight: 75.6,
+  reverseFreight: 153,
   packaging: 8,
 };
 const CASE_2: CostInputs = { ...CASE_1, cogs: 158, rtoRate: 0.12, returnRate: 0.13 };

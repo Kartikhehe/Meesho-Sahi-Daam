@@ -1,5 +1,13 @@
 # The engine
 
+> **Round-2 model (current).** The cost model now follows the Round-2 deck:
+> `floor = [C·(1−ρ(1−k)) + C_pack + 1.18·C_fwd·d + C_rev·r] ÷ [k − 1.18·a]` — forward freight on
+> delivered units, a ₹153 return leg on customer returns only (Valmo bears the RTO leg), resale
+> recovery ρ = 0.83, 18% GST on forward freight and ads, RTO 20% COD / 5% prepaid. The floor is
+> shown as a credibility-weighted band while a seller's own data is thin (`engine/uncertainty.ts`).
+> `npm run verify` checks every golden number in the deck. Sections 2–4 and 8 below describe the
+> round-1 model and are kept for the record of how the floor was first calibrated.
+
 Every formula, with its derivation. Written so the maths can be audited without reading TypeScript.
 
 All of it lives in `/engine`, which imports nothing from React and touches no browser globals —

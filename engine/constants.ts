@@ -41,10 +41,10 @@ export const HISTORY_DAYS = 548; // ~18 months
  * average so the case we make is conservative rather than flattering.
  */
 export const RTO_BY_COD = {
-  cod: 0.26,
-  prepaid: 0.02,
-  /** Scales the blended figure down to a conservative 17% at 80% COD. */
-  dampening: 0.78,
+  cod: 0.2,
+  prepaid: 0.05,
+  /** Retained for callers; the round-2 model needs no dampening (1 = off). */
+  dampening: 1,
 } as const;
 
 /**
@@ -68,7 +68,10 @@ export const RETURN_RATE_BY_CATEGORY: Record<string, number> = {
  * units, recovering 85%. Assumption: sellers we modelled this on report
  * 10-20% write-down depending on packaging quality.
  */
-export const RETURN_WRITEDOWN = 0.15;
+export const RESALE_RECOVERY = 0.83;
+
+/** Share of cost lost on goods that come back: 1 − ρ. Derived, kept for callers. */
+export const RETURN_WRITEDOWN = 1 - RESALE_RECOVERY;
 
 // --- logistics ------------------------------------------------------------
 
@@ -89,7 +92,7 @@ export const FREIGHT_SLABS: { maxGrams: number; forward: number }[] = [
  * customer address rather than a pickup hub, and often needs a second attempt.
  * Modelled at 1.163× forward, giving ₹75.60 against ₹65 forward.
  */
-export const REVERSE_FREIGHT_MULTIPLIER = 1.163;
+export const REVERSE_FREIGHT_MULTIPLIER = 153 / 65;
 
 /**
  * On an RTO the parcel never reaches the customer, and the marketplace credits
@@ -206,6 +209,24 @@ export const PINCODE_TIERS = [
   { tier: 4, share: 0.14, rtoMultiplier: 1.31, codPropensity: 0.92 },
 ] as const;
 
+// --- day-zero uncertainty ------------------------------------------------
+
+/**
+ * Credibility constant: a seller's own rate is blended with the prior as
+ * (n · own + K · prior) ÷ (n + K). At n = K her own data carries half the weight.
+ */
+export const CREDIBILITY_K = 30;
+
+/** The floor is shown as a band at this confidence while her own data is thin. */
+export const BAND_CONFIDENCE = 0.8;
+
+/**
+ * Uncertainty in the priors a day-zero seller inherits, as standard deviations.
+ * Propagated through the floor formula they give a ±₹28 80% band at n = 0 on
+ * the reference kurti, shrinking as √(K / (n + K)) — the deck's ±28/20/14/9.
+ */
+export const PRIOR_SD = { returnRate: 0.042, rtoCod: 0.021 } as const;
+
 // --- the provenance table -------------------------------------------------
 
 /**
@@ -228,7 +249,7 @@ export const PARAMS: Param[] = [
     value: RTO_BY_COD.cod,
     unit: "PCT",
     kind: "benchmark",
-    source: "GoKwik India RTO report (2023): COD RTO ~26% across 180M+ shoppers.",
+    source: "Round-2 model: 20% of COD parcels refused on Meesho lanes — below GoKwik's 26% cross-platform COD figure (2023, 180M+ shoppers), so the case stays conservative.",
   },
   {
     key: "RTO_BY_COD.prepaid",
@@ -236,24 +257,15 @@ export const PARAMS: Param[] = [
     value: RTO_BY_COD.prepaid,
     unit: "PCT",
     kind: "benchmark",
-    source: "GoKwik: prepaid RTO <2%. Prepayment is the single biggest RTO lever.",
+    source: "Round-2 model: 5% prepaid. Above GoKwik's <2% cross-platform figure. Prepayment is still the single biggest RTO lever.",
   },
   {
-    key: "RTO_BY_COD.dampening",
-    label: "RTO dampening factor",
-    value: RTO_BY_COD.dampening,
-    unit: "RATIO",
-    kind: "assumption",
-    source:
-      "Calibrates the blend to 17% at 80% COD — deliberately below the ~23% national average so the case is conservative.",
-  },
-  {
-    key: "RETURN_WRITEDOWN",
-    label: "COGS write-down on returned units",
-    value: RETURN_WRITEDOWN,
+    key: "RESALE_RECOVERY",
+    label: "Resale recovery on goods that come back (ρ)",
+    value: RESALE_RECOVERY,
     unit: "PCT",
     kind: "assumption",
-    source: "Returned garments recover ~85% of cost. Seller-reported range is 10-20%.",
+    source: "A refused or returned unit resells for 83% of its cost; 17% is lost to handling and wear. Applies to both RTO and customer returns.",
   },
   {
     key: "GST_ON_FEES",
@@ -261,7 +273,7 @@ export const PARAMS: Param[] = [
     value: GST_ON_FEES,
     unit: "PCT",
     kind: "benchmark",
-    source: "Statutory 18% GST on services (freight, reverse freight, ads). Not on goods.",
+    source: "Statutory 18% on services — on forward freight and ads in this model. The RTO return leg is borne by Valmo, so it carries no GST to the seller.",
   },
   {
     key: "COMMISSION_RATE",
@@ -282,12 +294,36 @@ export const PARAMS: Param[] = [
   },
   {
     key: "REVERSE_FREIGHT_MULTIPLIER",
-    label: "Reverse freight vs forward",
+    label: "Return-leg freight vs forward",
     value: REVERSE_FREIGHT_MULTIPLIER,
     unit: "RATIO",
     kind: "assumption",
     source:
-      "Reverse legs cost more (customer-address pickup, repeat attempts). 1.163× gives ₹75.60 against ₹65 forward.",
+      "₹153 on a customer return against ₹65 forward (2.35×). Charged on customer returns only — the RTO return leg is borne by Valmo.",
+  },
+  {
+    key: "CREDIBILITY_K",
+    label: "Credibility constant",
+    value: CREDIBILITY_K,
+    unit: "COUNT",
+    kind: "assumption",
+    source: "Own rate blended with the prior as (n·own + 30·prior) ÷ (n + 30). At 30 own orders her data carries half the weight.",
+  },
+  {
+    key: "PRIOR_SD.returnRate",
+    label: "Prior uncertainty, return rate (1 SD)",
+    value: PRIOR_SD.returnRate,
+    unit: "PCT",
+    kind: "assumption",
+    source: "With the RTO SD below, propagates to a ±₹28 80% band on the reference floor at day zero.",
+  },
+  {
+    key: "PRIOR_SD.rtoCod",
+    label: "Prior uncertainty, COD refusal rate (1 SD)",
+    value: PRIOR_SD.rtoCod,
+    unit: "PCT",
+    kind: "assumption",
+    source: "Half the return-rate SD: refusals vary less by design than returns do.",
   },
   {
     key: "SETTLEMENT_LAG_DAYS",
