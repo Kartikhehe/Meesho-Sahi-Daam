@@ -23,7 +23,7 @@ import { MoneyValue } from "@/components/shared/money-value";
 import { BandChip, RegimeChip, ScoreChip, StageChip } from "@/components/shared/status-chip";
 import { EmptyState, Skeleton, StateGate } from "@/components/shared/empty-state";
 import { useSeller } from "@/lib/use-seller";
-import { useWorldStore } from "@/lib/store/world-store";
+import { useSellerStore, useWorldStore } from "@/lib/store/world-store";
 import type { ListingAnalysis } from "@/lib/selectors";
 import { inr, count } from "@/lib/format";
 
@@ -58,6 +58,7 @@ function CatalogueInner() {
   const params = useSearchParams();
   const { analyses, summary, status, error } = useSeller();
   const setPrice = useWorldStore((s) => s.setPrice);
+  const recordAccept = useSellerStore((s) => s.recordAccept);
 
   const [filter, setFilter] = useState<Filter>((params.get("filter") as Filter) ?? "all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -81,6 +82,8 @@ function CatalogueInner() {
 
   const applySuggested = () => {
     for (const a of applicable) setPrice(a.listing.id, a.band.value.recommended);
+    // Each accepted suggestion counts toward the trust ladder.
+    if (applicable[0]) recordAccept(applicable[0].seller.id, applicable.length);
     setApplied(applicable.length);
     setSelected(new Set());
   };

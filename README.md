@@ -32,7 +32,7 @@ variables, no network calls at runtime.** It runs on a laptop with the wifi swit
 `npm run verify` is the one to run first. It proves the arithmetic without a browser:
 
 ```
-✓ all 86 checks passed
+✓ all 89 checks passed
 ```
 
 ---
@@ -74,6 +74,9 @@ New in the product:
   feed the floor, so COST_DRIFT alerts genuinely fire.
 - **The deck's reference kurti lives in the world** — Imran at ₹299 (−₹46 a parcel), Suresh at ₹449
   (0 orders), Anita's re-sourced version running a real price ladder.
+- **Trust ladder and Auto-Pilot** — Guided → Assisted → Auto-Pilot, earned by accepted suggestions, bounded by the seller's own floor, one-tap undo.
+- **Manager and Admin** — survival curve with confidence bands, kill criteria, a 2×2 regime map, and a Model Settings screen with computed blast radius.
+- **Story Mode** follows the deck's nine steps, each on real state.
 - **Buyer Price Index enforced** — Admin → Guardrails can push treated prices up 6%; the index breaches
   and every upward suggestion in the app pauses.
 

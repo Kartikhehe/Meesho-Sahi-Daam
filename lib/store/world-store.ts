@@ -62,6 +62,8 @@ type PersistedState = {
   accepted: Record<string, number>;
   trustMode: Record<string, TrustMode>;
   autoMoves: AutoMove[];
+  /** Alerts a seller chose to mute — the kill criteria's mute rate. */
+  mutedAlerts: string[];
 };
 
 /** Overrides and audit entries live in their own persisted store. */
@@ -76,6 +78,7 @@ export const useSellerStore = create<
     setTrustMode: (sellerId: string, mode: TrustMode) => void;
     logAutoMoves: (moves: AutoMove[]) => void;
     markUndone: (id: string) => void;
+    muteAlert: (alertId: string) => void;
   }
 >()(
   persist(
@@ -87,6 +90,8 @@ export const useSellerStore = create<
       accepted: {},
       trustMode: {},
       autoMoves: [],
+      mutedAlerts: [],
+      muteAlert: (alertId) => set((s) => ({ mutedAlerts: s.mutedAlerts.includes(alertId) ? s.mutedAlerts : [...s.mutedAlerts, alertId] })),
       setCostOverride: (listingId, o) =>
         set((s) => {
           const next = { ...s.costOverrides };
@@ -107,7 +112,7 @@ export const useSellerStore = create<
             : [...s.acknowledgedAlerts, alertId],
         })),
       append: (entry) => set((s) => ({ auditLog: [entry, ...s.auditLog].slice(0, 500) })),
-      clear: () => set({ priceOverrides: {}, acknowledgedAlerts: [], auditLog: [], costOverrides: {}, accepted: {}, trustMode: {}, autoMoves: [] }),
+      clear: () => set({ priceOverrides: {}, acknowledgedAlerts: [], auditLog: [], costOverrides: {}, accepted: {}, trustMode: {}, autoMoves: [], mutedAlerts: [] }),
     }),
     { name: "sahi-daam.seller", storage: createJSONStorage(() => localStorage) },
   ),

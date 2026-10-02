@@ -8,9 +8,9 @@
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 6 — trust ladder + Auto-Pilot (store state exists; no screen yet) |
-| **Next file to touch** | `app/(seller)/autopilot/page.tsx` (new), then the M3 regime 2×2 map |
-| **Known breakage** | None. Build clean; `npm run verify` → 86/86. Deployed. |
+| **Phase in progress** | All Round-2 phases complete |
+| **Next file to touch** | — |
+| **Known breakage** | None. Build and lint clean; `npm run verify` → 89/89; all routes and all nine story steps checked in a production build |
 
 ## Phases
 
@@ -18,11 +18,11 @@
 - [x] **2 · Band rule** — `[floor·(1+m), ceiling]`, four launch verdicts, profit-max suggestion everywhere
 - [x] **3 · Day-zero data** — fallback ladder, credibility blending, floor range + narrowing chart, buyer-side RTO, basis chips
 - [x] **4 · Six hard cases** — cost ladder + mock bill reader, no-twins prior, "My cost is different" (audited), Meesho-only note, Hindi voice, plausibility nudge
-- [~] **5 · Regimes** — classifier, chips, REGIME SHIFT trigger, trend/seasonal lifecycles done. **Left:** 2×2 regime map on M3; regime tempo driving ladder width.
-- [ ] 6 · Trust ladder + Auto-Pilot — accept counts and Auto-Pilot move log are in the seller store; the screen is not built
-- [~] 7 · Manager and Admin — BPI lever is real (Guardrails). **Left:** Admin model-settings screen (m, K, confidence, regime thresholds — the config store already holds them), kill-criteria panel, regime distribution
-- [~] **8 · Personas** done — the deck's reference kurti lives in the world (Imran ₹299 → −₹45.97/parcel, −₹46.3k/month; Suresh ₹449 → 0 orders; Anita's re-sourced kurti runs a price ladder), Farida sells zari dupattas, Rekha's costs move under a slab re-card and the monsoon. **Left:** rewrite Story Mode to the deck's nine steps.
-- [~] 9 · README Round-2 section, clean build, deployed. **Left:** 360 px pass on the new screens.
+- [x] **5 · Regimes** — classifier with hysteresis, chips, REGIME SHIFT trigger, trend/seasonal lifecycles, 2×2 map and distribution on Cluster Health, thresholds editable in Model Settings
+- [x] **6 · Trust ladder + Auto-Pilot** — `/autopilot`: Guided → Assisted (10 accepts, our assumption) → Auto-Pilot (40), bounded by floor × (1 + m) and the ceiling, paused by kill switch / BPI, one-tap undo with "why did this change?"
+- [x] **7 · Manager and Admin** — `/model` (m, K, confidence, regime thresholds; blast radius; audited), kill-criteria panel on M4, structural-cost designs routed to M5, real BPI lever on A3
+- [x] **8 · Personas + Story Mode** — the deck's reference kurti in the world; Story Mode is now exactly the deck's nine steps, each deep-linked to real state
+- [x] **9 · Polish** — README Round-2 section, clean build, production smoke test of every route
 
 ## Phase 1 notes
 
@@ -80,3 +80,13 @@
   in the festive run-up have their exit pre-scheduled at season end.
 - `data/generator/reference.ts`: the reference cluster's rivals are held still (`stable`) so its ceiling
   stays ₹352 and the deck's numbers stay reproducible; its listings carry measured rates.
+
+## Phases 6–9 notes
+
+- Rekha's cost-drift alerts are real (33 fired from the slab re-card) but her larger below-floor alerts
+  take the two weekly slots, so they are held back. `/alerts?trigger=COST_DRIFT` shows one trigger in full,
+  held-back ones labelled as such — Story step 7 uses it rather than bending the cap.
+- Kill criteria: the "alerts muted by sellers" rate needed something to measure, so alerts now have a Mute
+  control. Acceptance = accepted recommendations ÷ alerts sent to treated sellers.
+- Survival: Kaplan–Meier over listing lifetimes (until S5 exit), treated vs control, Greenwood 95% bands.
+- The New Listing wizard is keyed on its query string, so consecutive Story deep links start fresh.

@@ -16,6 +16,8 @@ import { DataTable, type Column } from "@/components/shared/data-table";
 import { StatusChip } from "@/components/shared/status-chip";
 import { Skeleton, StateGate } from "@/components/shared/empty-state";
 import { useWorld } from "@/lib/use-seller";
+import { useConfigStore } from "@/lib/store/config-store";
+import { RegimeMap } from "@/components/manager/regime-map";
 import { clusterHealth, type ClusterHealth } from "@/lib/cohort";
 import { inr, count, pct } from "@/lib/format";
 import { Page, PageHeader } from "@/components/shared/page-header";
@@ -24,6 +26,7 @@ import { Callout } from "@/components/shared/callout";
 export default function ClustersPage() {
   const { world, status, error } = useWorld();
   const clusters = useMemo(() => (world ? clusterHealth(world) : []), [world]);
+  const thresholds = useConfigStore((s) => s.regime);
 
   const broken = clusters.filter((c) => c.structurallyBroken);
   const brokenShare = clusters.length ? broken.length / clusters.length : 0;
@@ -106,6 +109,8 @@ export default function ClustersPage() {
       />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
+        {world ? <RegimeMap world={world} thresholds={thresholds} /> : null}
+
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
           <MetricCard
             label="Designs where the median seller has no viable band"

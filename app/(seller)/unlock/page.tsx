@@ -54,11 +54,14 @@ function UnlockInner() {
     )[0] ?? null;
   }, [analyses, skuParam]);
 
-  const startCod = seller?.codShare ?? 0.8;
+  const startCod = base?.listing.measured?.codShare ?? seller?.codShare ?? 0.8;
 
-  const [cogs, setCogs] = useState<number | null>(null);
-  const [returnRate, setReturnRate] = useState<number | null>(null);
-  const [codShare, setCodShare] = useState<number | null>(null);
+  // ?preset=deck applies the deck's three unlocks: COGS 180→158, returns
+  // 20%→13%, cash on delivery 80%→55%.
+  const deck = params.get("preset") === "deck";
+  const [cogs, setCogs] = useState<number | null>(deck ? 158 : null);
+  const [returnRate, setReturnRate] = useState<number | null>(deck ? 0.13 : null);
+  const [codShare, setCodShare] = useState<number | null>(deck ? 0.55 : null);
   const [adRate, setAdRate] = useState<number | null>(null);
   const [openLever, setOpenLever] = useState<Lever | null>(null);
 

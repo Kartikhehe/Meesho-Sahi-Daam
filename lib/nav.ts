@@ -58,6 +58,16 @@ export const SELLER_NAV: NavItem[] = [
     blurb: "Four steps from a category to a verdict: list, differentiate, or don't list yet.",
   },
   {
+    code: "S9",
+    href: "/autopilot",
+    group: "pricing",
+    label: "Auto-Pilot",
+    labelHi: "ऑटो-पायलट",
+    icon: "Gauge",
+    capability: "seller.autoPilot",
+    blurb: "Guided, then Assisted, then Auto-Pilot — earned by accepting suggestions, bounded by your own floor, undoable in one tap.",
+  },
+  {
     code: "S5",
     href: "/unlock",
     group: "pricing",
@@ -156,6 +166,15 @@ export const ADMIN_NAV: NavItem[] = [
     icon: "SlidersHorizontal",
     capability: "admin.engineConfig",
     blurb: "The cost-model inputs and their sources. Changes show blast radius and are audited.",
+  },
+  {
+    code: "A8",
+    href: "/model",
+    group: "engine",
+    label: "Model Settings",
+    icon: "Settings2",
+    capability: "admin.modelSettings",
+    blurb: "Band margin, credibility constant, floor-range confidence and regime thresholds — each change audited with its blast radius.",
   },
   {
     code: "A2",

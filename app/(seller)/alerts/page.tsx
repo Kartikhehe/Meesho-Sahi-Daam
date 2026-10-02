@@ -9,7 +9,8 @@
  * inbox in a dashboard.
  */
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, MessageCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -21,27 +22,41 @@ import { EmptyState, Skeleton, StateGate } from "@/components/shared/empty-state
 import { TRIGGER_COPY } from "@/engine/triggers";
 import { ALERT_CAP_PER_WEEK } from "@/engine/constants";
 import { useSeller } from "@/lib/use-seller";
-import { useWorldStore } from "@/lib/store/world-store";
+import { useSellerStore, useWorldStore } from "@/lib/store/world-store";
 import { LANGUAGES, alertMessage, type Lang } from "@/lib/i18n";
 import { inr, formatDateShort, count } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import type { FiredTrigger } from "@/engine/types";
+import type { FiredTrigger, TriggerId } from "@/engine/types";
 import { Page, PageHeader } from "@/components/shared/page-header";
 
 export default function AlertsPage() {
+  return (
+    <Suspense fallback={null}>
+      <Alerts />
+    </Suspense>
+  );
+}
+
+function Alerts() {
   const { world, seller, status, error } = useSeller();
   const acknowledge = useWorldStore((s) => s.acknowledgeAlert);
   const [lang, setLang] = useState<Lang>("hi");
+  // ?trigger=COST_DRIFT shows every alert of one kind in full — including any
+  // the weekly cap held back — so a specific story can be followed.
+  const only = useSearchParams().get("trigger") as TriggerId | null;
 
   const { live, muted } = useMemo(() => {
     if (!world || !seller) return { live: [] as FiredTrigger[], muted: [] as FiredTrigger[] };
     const mine = world.alerts.filter((a) => a.sellerId === seller.id);
     const recent = mine.filter((a) => a.day > world.day - 28);
+    if (only) {
+      return { live: recent.filter((a) => a.triggerId === only).sort((a, b) => b.day - a.day || b.rupeeImpact - a.rupeeImpact), muted: [] };
+    }
     return {
       live: recent.filter((a) => !a.muted).sort((a, b) => b.day - a.day || b.rupeeImpact - a.rupeeImpact),
       muted: recent.filter((a) => a.muted).sort((a, b) => b.rupeeImpact - a.rupeeImpact),
     };
-  }, [world, seller]);
+  }, [world, seller, only]);
 
   const listingName = (id: string) => world?.listings.find((l) => l.id === id)?.name ?? id;
 
@@ -76,6 +91,13 @@ export default function AlertsPage() {
             </select>
           </label>
         </Card>
+
+        {only ? (
+          <p className="type-small mb-3 text-[var(--text-muted)]">
+            Showing only <strong className="text-[var(--text)]">{TRIGGER_COPY[only]?.label ?? only}</strong> alerts from the last four weeks,
+            including any the weekly cap held back. <a href="/alerts" className="link">Show all</a>
+          </p>
+        ) : null}
 
         {live.length === 0 ? (
           <EmptyState
@@ -160,6 +182,7 @@ function AlertCard({
         <span className="tabular text-[12px] text-[var(--text-subtle)]">
           {formatDateShort(alert.day)}
         </span>
+        {alert.muted ? <StatusChip tone="neutral" dot={false}>Held back by the weekly cap</StatusChip> : null}
         <span className="tabular ml-auto text-sm font-semibold text-[var(--danger)]">
           {inr(alert.rupeeImpact)}/month
         </span>
@@ -180,6 +203,7 @@ function AlertCard({
           <MessageCircle size={13} aria-hidden />
           {showMessage ? "Hide" : "See"} the WhatsApp message
         </Button>
+        <MuteButton alertId={alert.id} />
         {!alert.acknowledged ? (
           <Button size="sm" variant="ghost" onClick={onAcknowledge}>
             <Check size={13} aria-hidden />
@@ -218,5 +242,15 @@ function AlertCard({
         </div>
       ) : null}
     </Card>
+  );
+}
+
+function MuteButton({ alertId }: { alertId: string }) {
+  const muted = useSellerStore((s) => s.mutedAlerts.includes(alertId));
+  const mute = useSellerStore((s) => s.muteAlert);
+  return muted ? (
+    <span className="text-[12px] text-[var(--text-subtle)]">Muted</span>
+  ) : (
+    <Button size="sm" variant="ghost" onClick={() => mute(alertId)}>Mute</Button>
   );
 }

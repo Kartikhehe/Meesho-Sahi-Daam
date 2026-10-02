@@ -15,6 +15,10 @@ import { buildWaterfall } from "../engine/waterfall";
 import { monthlyContribution, profitMaxPrice } from "../engine/launch";
 import { floorBand, probFloorAbove, rtoForCodShare } from "../engine/uncertainty";
 import { resolveNewListingMarket } from "../lib/new-listing-market";
+import { proposedMoves } from "../lib/trust";
+import { listingSurvival } from "../lib/survival";
+import { marginBlast } from "../lib/blast";
+import { analyseSeller } from "../lib/selectors";
 import { estimateReturns, estimateRto } from "../engine/priors";
 import { REFERENCE_AFTER, REFERENCE_BEFORE, REFERENCE_CEILING, REFERENCE_DEMAND } from "../engine/reference";
 import { priceShare, visibilityGate } from "../engine/demand";
@@ -184,6 +188,17 @@ section("Fallback ladder and credibility blending");
   const expect = r.own === null ? r.prior : (r.n * r.own + 30 * r.prior) / (r.n + 30);
   check("returns = (n·own + 30·prior) ÷ (n + 30)", r.value, expect, 1e-12);
   checkEq("prior level comes from the fallback ladder", ["design cluster", "category", "platform"].includes(r.priorLevel), true);
+}
+
+section("Trust ladder, survival, blast radius");
+{
+  const w2 = advanceDays(buildEmptyWorld(230540, 0, 120), 120).world;
+  const moves = proposedMoves(analyseSeller(w2, "slr-imran"));
+  const bandOf = (id: string) => analyseSeller(w2, "slr-imran").find((a) => a.listing.id === id)!.band.value;
+  checkEq("Auto-Pilot never moves outside [floor·(1+m), ceiling]", moves.every((m) => { const b = bandOf(m.listingId); return m.to >= b.bandLow && m.to <= b.ceiling; }), true);
+  const km = listingSurvival(w2, 120).treated;
+  checkEq("survival starts at 100% and never rises", km[0]?.s === 1 && km.every((p, i) => i === 0 || p.s <= (km[i - 1]?.s ?? 1) + 1e-12), true);
+  checkEq("a no-op margin change has zero blast radius", marginBlast(w2, 0.03, 0.03).changed, 0);
 }
 
 section("Determinism  —  same seed, same world");

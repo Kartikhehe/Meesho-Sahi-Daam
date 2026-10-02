@@ -101,6 +101,7 @@ export default function QueuePage() {
       />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-80 w-full" />}>
+        {world ? <StructuralDesigns world={world} /> : null}
         {queue.length === 0 ? (
           <EmptyState
             tone="success"
@@ -168,5 +169,25 @@ export default function QueuePage() {
         )}
       </StateGate>
     </Page>
+  );
+}
+
+/** Designs where the median seller has no viable band — routed here because no price fixes them. */
+function StructuralDesigns({ world }: { world: World }) {
+  const broken = clusterHealth(world).filter((c) => c.structurallyBroken);
+  if (!broken.length) return null;
+  return (
+    <Card className="mb-4 p-4">
+      <h2 className="type-h3 text-[var(--text)]">Designs with no viable band — {count(broken.length)}</h2>
+      <p className="type-small mt-1 text-[var(--text-muted)]">
+        Reason code <strong>STRUCTURAL COST</strong>: the median seller&rsquo;s cost to serve already exceeds what buyers pay to find
+        these designs. That is a freight, returns or ad-load problem for the marketplace, not a pricing one for the seller.
+      </p>
+      <ul className="mt-3 flex flex-wrap gap-1.5">
+        {broken.slice(0, 16).map((c) => (
+          <li key={c.clusterId}><StatusChip tone="danger" dot={false}>{c.name} · {inr(c.medianBandWidth)}</StatusChip></li>
+        ))}
+      </ul>
+    </Card>
   );
 }

@@ -29,109 +29,101 @@ export type StoryStep = {
 
 export const STORY: StoryStep[] = [
   {
-    id: "gap",
-    title: "The ₹95 she never sees",
-    titleHi: "वह ₹95 जो दिखते ही नहीं",
+    id: "imran",
+    title: "₹299, and ₹46 lost on every order",
+    titleHi: "₹299 पर हर ऑर्डर में ₹46 का नुकसान",
     narration:
-      "A seller lists a kurti at ₹305. Her arithmetic says she earns ₹52: price, minus goods, minus shipping, minus packing. What actually reaches her is minus ₹43 — a ₹95 gap on a ₹305 product, and she does not find out for fifteen to twenty-five days, when the settlement file arrives.",
-    href: "/dev/charts",
-    lookFor:
-      "The waterfall. Every bar after the first is something she did not know about, or knew about but not the size of.",
-    role: "seller",
-  },
-  {
-    id: "archetypes",
-    title: "Three ways to get this wrong",
-    titleHi: "गलती के तीन तरीके",
-    narration:
-      "Suresh ported his shop prices online and sits above the ceiling — his listings are perfectly sensible and almost nobody sees them. Imran undercuts every rival and sells plenty, at a loss on most parcels. Rekha priced once, eleven months ago, and her costs moved underneath her.",
-    href: "/sellers",
-    lookFor:
-      "The 'how they price' column. That classification is derived from what each seller actually does, not assigned to her.",
-    role: "manager",
-  },
-  {
-    id: "floor",
-    title: "The floor nobody computes",
-    titleHi: "सुरक्षा दाम",
-    narration:
-      "Every marketplace tells a seller the price that will win. None tells her the price that lets her survive. The survival price counts the parcels that never pay, both freight legs, the tax on those fees, and the ads — and it puts the ad rate in the denominator, because ad cost grows as the price grows.",
-    href: "/sku/sku-imran-071",
-    lookFor:
-      "Tap the survival price. The drawer shows every line and where each number came from — her own orders, the market, or a published benchmark.",
+      "Imran prices his cotton kurti at ₹299 to undercut everyone. It works — about a thousand orders a month. But his survival price is ₹375, so every parcel loses ₹46, and the month loses about ₹47,500. He will not see it for fifteen days.",
+    href: "/sku/sku-imran-ref",
+    lookFor: "Tap the ₹375 survival price. Every line of the maths opens, and each input says whether it is his, exact from Meesho, or a measured rate.",
     sellerId: "slr-imran",
     role: "seller",
   },
   {
-    id: "ceiling",
-    title: "And the ceiling above it",
-    titleHi: "और उसके ऊपर की सीमा",
+    id: "suresh",
+    title: "₹449: above the gate, no orders",
+    titleHi: "₹449: सीमा से ऊपर, एक भी ऑर्डर नहीं",
     narration:
-      "The ceiling is a property of the design she is selling into, not of her business. Buyers sort by price; above a certain point she is on a page nobody scrolls to. Floor and ceiling together make a band — and a price outside it fails for one of two completely different reasons.",
-    href: "/sku/sku-imran-071#market",
-    lookFor:
-      "The scatter: every rival's price against its share of orders, with the ceiling drawn across it. Public prices only — no seller can see another's costs.",
-    sellerId: "slr-imran",
+      "Suresh lists the same kurti at ₹449 — his shop markup. By his own arithmetic it earns well. But buyers stop looking above ₹352, so the listing gets no orders at all. A price can be safe and still dead.",
+    href: "/sku/sku-suresh-ref",
+    lookFor: "The Daam Meter: his price sits far right, in the grey zone where buyers stop finding him. Orders in the last 30 days: zero.",
+    sellerId: "slr-suresh",
     role: "seller",
   },
   {
-    id: "dont-list",
-    title: "Sometimes the answer is don't",
-    titleHi: "कभी-कभी जवाब है — मत डालिए",
+    id: "farida",
+    title: "Day zero: a floor as a range",
+    titleHi: "पहला दिन: सुरक्षा दाम एक सीमा में",
     narration:
-      "For some products the floor sits above the ceiling. No price both covers her costs and gets her found. Every pricing tool in the market will still recommend a number. The honest answer is to name the gap and say don't list this yet — and then say exactly what would have to change.",
-    href: "/new-listing",
-    lookFor:
-      "Pick a kurti, enter ₹175 for the goods and 900g. The Daam Meter inverts into a hatched gap, and the verdict names the lever instead of inventing a price.",
+      "Farida in Bareilly has never sold online. Nothing like her zari dupattas is listed, so the market is borrowed from related designs at the same weight, and her floor is shown as a range — not a fake point — that narrows as her own orders arrive.",
+    href: "/new-listing?category=dupatta&cogs=140&grams=300&step=2",
+    lookFor: "The floor range and its confidence line, the NEW / THIN tag, and 'Why a range' — every input with its source and n.",
     sellerId: "slr-farida",
     role: "seller",
   },
   {
-    id: "unlock",
-    title: "What would have to change",
-    titleHi: "क्या बदलना होगा",
+    id: "dont-list",
+    title: "The ₹399 kurti: don't list it yet",
+    titleHi: "₹399 की कुर्ती: अभी मत डालिए",
     narration:
-      "Cost, returns, cash-on-delivery share, ad rate. Four levers she actually controls. Drag any of them and the floor moves live, with a ghost marker holding where she started — and each lever carries concrete tactics, because 'reduce your returns' is advice nobody can act on.",
-    href: "/unlock",
-    lookFor:
-      "Drag the cash-on-delivery slider down. Watch the survival price fall, and watch the band open when it crosses the ceiling.",
+      "Back to the kurti at its real costs: ₹180 goods, 20% returns, 80% cash on delivery. Its floor is ₹375; buyers stop at ₹352. No price both pays and gets seen. Every other tool would suggest a number. This one says don't list yet — and names the lever.",
+    href: "/new-listing?category=kurti&cogs=180&grams=450&planned=399&cluster=cl-ref&step=2",
+    lookFor: "The gap as an equation, the lever that moves the floor most, the voice note — and the line saying we will not stop her.",
+    sellerId: "slr-imran",
+    role: "seller",
+  },
+  {
+    id: "unlock",
+    title: "₹375 → ₹313: a band opens",
+    titleHi: "₹375 → ₹313: जगह खुल गई",
+    narration:
+      "Three changes she controls: goods from ₹180 to ₹158, returns from 20% to 13% with a real size chart, cash on delivery from 80% to 55% with a prepaid discount. The floor falls to ₹313 — under the ₹352 ceiling. A band exists that did not before.",
+    href: "/unlock?sku=sku-imran-ref&preset=deck",
+    lookFor: "The 'band opened' banner and the Daam Meter's green zone. Drag any lever back to see which one mattered most.",
     sellerId: "slr-imran",
     role: "seller",
   },
   {
     id: "ladder",
-    title: "Then find the price by testing",
-    titleHi: "फिर जाँच कर के दाम ढूँढें",
+    title: "90 days later: the ladder settles at ₹334",
+    titleHi: "90 दिन बाद: दाम ₹334 पर टिका",
     narration:
-      "A new listing has no demand curve of its own, so we borrow one from look-alikes and then test three rungs for real. The bandit ranks rungs by rupees earned, not by how many sell — the cheapest rung almost always sells most, which is exactly the trap. Learning is capped at five percent, enforced in code.",
-    href: "/sku/sku-imran-071#experiment",
-    lookFor:
-      "The three rungs and their posteriors. The width of each bar is how unsure we still are about that price.",
-    sellerId: "slr-imran",
+      "Anita re-sourced the same kurti with those three changes and launched a price ladder at ₹314, ₹334 and ₹354. Ninety simulated days later the ladder has settled on ₹334 — not the cheapest rung, which sells most, but the one that earns most.",
+    href: "/sku/sku-anita-ref#experiment",
+    lookFor: "Shows per rung, the posterior belief for each, and the cost of learning against the 5% cap.",
+    sellerId: "slr-anita",
     role: "seller",
   },
   {
-    id: "clock",
-    title: "Prices go stale",
-    titleHi: "दाम पुराने हो जाते हैं",
+    id: "rekha",
+    title: "Rekha's freight slab moves",
+    titleHi: "रेखा का भाड़ा बदला",
     narration:
-      "Freight slabs move. Return rates drift with the season. Rivals reprice. Six triggers watch for it, ranked by what each one costs her, and at most two reach her in a week — beyond that people stop reading, and the channel stops being worth anything.",
-    href: "/alerts",
-    lookFor:
-      "The cap, stated plainly, and the alerts it holds back. Nothing is discarded; it just waits its turn.",
-    sellerId: "slr-imran",
+      "Three weeks ago Valmo re-carded the 501–1000 g slab. Rekha priced her bedsheets eleven months ago and has not looked since. Her floor moved ₹16 a parcel; her prices did not. The alert reaches her where she already is — WhatsApp — and can be listened to.",
+    href: "/alerts?trigger=COST_DRIFT",
+    lookFor: "Open 'See the WhatsApp message and voice note' on any alert, then press सुनें.",
+    sellerId: "slr-rekha",
     role: "seller",
   },
   {
-    id: "cohort",
-    title: "What it looks like at scale",
-    titleHi: "बड़े पैमाने पर",
+    id: "survival",
+    title: "Does it work? Survival, treated against control",
+    titleHi: "क्या यह काम करता है?",
     narration:
-      "Across the cohort, 62 percent of listings are priced below what they cost to ship. But forty percent of designs have no viable band for the median seller at all — and that is not a seller-education problem. It is the marketplace's own cost structure, which only the marketplace can move.",
-    href: "/clusters",
-    lookFor:
-      "The count of designs where the median seller cannot make money at any price. That number is the supply-side finding.",
+      "For the category manager: listing survival for sellers who see the tool against those who do not, with honest confidence bands. With six sellers they overlap — and the screen says so, alongside the kill criteria that would stop the pilot.",
+    href: "/cohort",
+    lookFor: "The survival curves and their bands, then 'Open the experiment readout and kill criteria'.",
     role: "manager",
+  },
+  {
+    id: "bpi",
+    title: "Push prices up — the guardrail pauses advice",
+    titleHi: "दाम बढ़ाइए — सुरक्षा कदम रुक जाता है",
+    narration:
+      "A pricing tool must not quietly make shopping dearer. Press 'Push prices up 6%' and treated sellers' listed prices rise; the Buyer Price Index crosses 100, and every upward suggestion in the app pauses until it falls.",
+    href: "/guardrails",
+    lookFor: "Press the button, watch the index breach, then open any seller's listing: upward suggestions are held. Press 'Restore prices' when done.",
+    role: "admin",
   },
 ];
 

@@ -166,10 +166,16 @@ function Wizard() {
   );
 }
 
+/** Keyed on the query string, so a new deep link (from Story Mode) starts a fresh wizard. */
+function KeyedWizard() {
+  const q = useSearchParams();
+  return <Wizard key={q.toString()} />;
+}
+
 export default function NewListingPage() {
   return (
     <Suspense fallback={<div className="p-6"><Skeleton className="h-80 w-full" /></div>}>
-      <Wizard />
+      <KeyedWizard />
     </Suspense>
   );
 }

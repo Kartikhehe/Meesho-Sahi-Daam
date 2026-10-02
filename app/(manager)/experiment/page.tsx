@@ -16,6 +16,7 @@ import { MetricCard } from "@/components/shared/metric-card";
 import { StatusChip } from "@/components/shared/status-chip";
 import { Skeleton, StateGate } from "@/components/shared/empty-state";
 import { useWorld } from "@/lib/use-seller";
+import { KillCriteria } from "@/components/manager/kill-criteria";
 import { cohortHealth, type SellerHealth } from "@/lib/cohort";
 import { BUYER_PRICE_INDEX_GATE } from "@/engine/constants";
 import { inr, count, pct } from "@/lib/format";
@@ -139,6 +140,7 @@ export default function ExperimentPage() {
       />
 
       <StateGate status={status} error={error} skeleton={<Skeleton className="h-96 w-full" />}>
+        {world ? <KillCriteria world={world} /> : null}
         <Callout tone="warning" title="This pilot is far too small to conclude anything" className="mb-4">
 <p>
             {count(treated.length)} treated sellers against {count(control.length)} control. Every

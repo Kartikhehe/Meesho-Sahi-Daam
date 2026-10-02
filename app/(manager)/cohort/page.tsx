@@ -15,6 +15,7 @@ import { MetricCard } from "@/components/shared/metric-card";
 import { Skeleton, StateGate, EmptyState } from "@/components/shared/empty-state";
 import { ChartFrame } from "@/components/charts/chart-frame";
 import { useWorld } from "@/lib/use-seller";
+import { SurvivalChart } from "@/components/manager/survival-chart";
 import { bandDistribution, cohortHealth, summariseCohort } from "@/lib/cohort";
 import { inr, inrCompact, count, pct } from "@/lib/format";
 import { Page, PageHeader } from "@/components/shared/page-header";
@@ -172,22 +173,9 @@ export default function CohortPage() {
               </Card>
             </div>
 
-            <Card className="mt-4 p-4">
-              <h2 className="text-[13px] font-semibold text-[var(--text)]">
-                90-day survival, treated against control
-              </h2>
-              <p className="mt-0.5 text-[12px] text-[var(--text-muted)]">
-                This cohort is small — see the experiment readout for whether any of this is
-                significant yet.
-              </p>
-              <div className="mt-3">
-                <Link
-                  href="/experiment"
-                  className="inline-flex min-h-11 items-center text-[13px] font-medium text-[var(--brand-magenta)] hover:underline"
-                >
-                  Open the experiment readout
-                </Link>
-              </div>
+            <Card className="mt-4 p-4 sm:p-5">
+              {world ? <SurvivalChart world={world} /> : null}
+              <Link href="/experiment" className="link mt-3 inline-flex text-[13px]">Open the experiment readout and kill criteria</Link>
             </Card>
           </>
         )}
