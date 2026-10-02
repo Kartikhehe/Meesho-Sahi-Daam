@@ -7,7 +7,7 @@ Every marketplace tells a seller the price that will **win**. None tells her the
 ceiling, and the only honest advice is *"don't list this yet."* No pricing tool says that. This one
 does.
 
-**Live demo:** https://sahi-daam-livid.vercel.app — switch role and seller from the top bar, or start **Story mode** from the sidebar.
+**Live demo:** https://meesho-sahi-daam.vercel.app — switch role and seller from the top bar, or start **Story mode** from the sidebar.
 
 ---
 
