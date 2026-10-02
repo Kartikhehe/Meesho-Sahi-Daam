@@ -69,10 +69,19 @@ export function regimeSignals(rivals: CompetitorListing[], t: RegimeThresholds =
   return { credible, cv, topShare };
 }
 
-export function classifyRegime(rivals: CompetitorListing[], t: RegimeThresholds = DEFAULT_REGIME_THRESHOLDS): Traced<Regime> {
+/**
+ * @param previous the regime last time, if known. Classification has
+ *   hysteresis: a design only changes regime once a signal clearly crosses its
+ *   line (2 credible rivals, half a point of dispersion), so prices drifting
+ *   around a threshold do not flap the regime — and the REGIME SHIFT alert —
+ *   back and forth every week.
+ */
+export function classifyRegime(rivals: CompetitorListing[], t: RegimeThresholds = DEFAULT_REGIME_THRESHOLDS, previous?: Regime): Traced<Regime> {
   const { credible, cv, topShare } = regimeSignals(rivals, t);
-  const crowded = credible >= t.crowdedAt;
-  const dispersed = cv >= t.dispersedAt;
+  const wasCrowded = previous === "RED_OCEAN" || previous === "CONTESTED";
+  const wasDispersed = previous === "CONTESTED" || previous === "NICHE";
+  const crowded = previous ? (wasCrowded ? credible >= t.crowdedAt - 2 : credible >= t.crowdedAt + 2) : credible >= t.crowdedAt;
+  const dispersed = previous ? (wasDispersed ? cv >= t.dispersedAt - 0.005 : cv >= t.dispersedAt + 0.005) : cv >= t.dispersedAt;
   const regime: Regime = crowded ? (dispersed ? "CONTESTED" : "RED_OCEAN") : dispersed ? "NICHE" : "NEW_THIN";
 
   return traced(regime, [

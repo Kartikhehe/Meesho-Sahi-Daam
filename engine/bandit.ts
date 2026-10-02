@@ -190,3 +190,17 @@ export function shouldConclude(exp: LadderExperiment, minImpressions = 120): boo
 export function conclude(exp: LadderExperiment): LadderExperiment {
   return { ...exp, status: "concluded", winningArm: bestArm(exp) };
 }
+
+/**
+ * Record one day on a rung: `shows` impressions, `sold` of which converted,
+ * earning `rupees` in contribution. The Beta posterior moves by whole days.
+ */
+export function updateArmDay(exp: LadderExperiment, arm: ArmId, sold: number, shows: number, rupees: number): LadderExperiment {
+  const s = Math.max(0, Math.min(sold, shows));
+  return {
+    ...exp,
+    arms: exp.arms.map((a) =>
+      a.arm !== arm ? a : { ...a, alpha: a.alpha + s, beta: a.beta + (shows - s), orders: a.orders + s, impressions: a.impressions + shows, contribution: a.contribution + rupees },
+    ),
+  };
+}

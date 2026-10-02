@@ -14,6 +14,7 @@ import { contributionPerOrder, survivalPrice, type CostInputs } from "@/engine/c
 import { visibilityGate } from "@/engine/demand";
 import { daamScore } from "@/engine/score";
 import { bestPriceInBand } from "@/engine/launch";
+import { envAt } from "@/engine/environment";
 import { estimateReturns, estimateRto, type RateEstimate } from "@/engine/priors";
 import { floorBand, type FloorBand } from "@/engine/uncertainty";
 import { classifyRegime, type Regime, type RegimeThresholds } from "@/engine/regime";
@@ -83,9 +84,19 @@ export type CostOverride = { forwardFreight?: number; reverseFreight?: number; p
  * fallback-ladder prior (engine/priors.ts), and any overrides she has set.
  */
 export function costInputsBlended(world: World, listing: Listing, seller: Seller, opts: AnalysisOptions = {}) {
-  const base = costInputsFor(listing, seller);
-  const rto = estimateRto(world, seller.id, seller.codShare, opts.credibilityK);
+  const base = costInputsFor(listing, seller, envAt(world, world.day));
+  const rto = estimateRto(world, seller.id, listing.measured?.codShare ?? seller.codShare, opts.credibilityK);
   const returns = estimateReturns(world, listing, opts.credibilityK);
+  // A listing whose rates were measured directly (the deck's reference kurti)
+  // uses them as given, with the basis saying so.
+  if (listing.measured?.returnRate !== undefined) {
+    returns.value = listing.measured.returnRate;
+    returns.basis = "MEESHO · measured for this listing";
+  }
+  if (listing.measured?.codShare !== undefined) {
+    rto.value = base.rtoRate;
+    rto.basis = "MEESHO · measured for this listing";
+  }
   const o = opts.costOverrides?.[listing.id] ?? {};
   const inputs: CostInputs = {
     ...base,
@@ -163,7 +174,7 @@ export function analyseListing(
     range,
     rates,
     customInputs: custom,
-    regime: classifyRegime(rivals, opts.regime),
+    regime: classifyRegime(rivals, opts.regime, world.clusterRegimes?.[listing.clusterId]),
   };
 }
 

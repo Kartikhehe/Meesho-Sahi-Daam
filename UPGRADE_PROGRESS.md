@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 5 — regimes: REGIME SHIFT trigger, product-type lifecycle, 2×2 map, admin params |
-| **Next file to touch** | `engine/triggers.ts` (7th trigger), then `engine/lifecycle.ts` |
-| **Known breakage** | None. Build clean; `npm run verify` → 86/86 |
+| **Phase in progress** | Phase 6 — trust ladder + Auto-Pilot (store state exists; no screen yet) |
+| **Next file to touch** | `app/(seller)/autopilot/page.tsx` (new), then the M3 regime 2×2 map |
+| **Known breakage** | None. Build clean; `npm run verify` → 86/86. Deployed. |
 
 ## Phases
 
@@ -14,11 +14,11 @@
 - [x] **2 · Band rule** — `[floor·(1+m), ceiling]`, four launch verdicts, profit-max suggestion everywhere
 - [x] **3 · Day-zero data** — fallback ladder, credibility blending, floor range + narrowing chart, buyer-side RTO, basis chips
 - [x] **4 · Six hard cases** — cost ladder + mock bill reader, no-twins prior, "My cost is different" (audited), Meesho-only note, Hindi voice, plausibility nudge
-- [ ] 5 · Regimes, REGIME SHIFT trigger, product-type lifecycle, chips, 2×2 map
-- [ ] 6 · Trust ladder + Auto-Pilot
-- [ ] 7 · Manager and Admin additions
-- [ ] 8 · Personas + Story Mode
-- [ ] 9 · Polish, README, clean build
+- [~] **5 · Regimes** — classifier, chips, REGIME SHIFT trigger, trend/seasonal lifecycles done. **Left:** 2×2 regime map on M3; regime tempo driving ladder width.
+- [ ] 6 · Trust ladder + Auto-Pilot — accept counts and Auto-Pilot move log are in the seller store; the screen is not built
+- [~] 7 · Manager and Admin — BPI lever is real (Guardrails). **Left:** Admin model-settings screen (m, K, confidence, regime thresholds — the config store already holds them), kill-criteria panel, regime distribution
+- [~] **8 · Personas** done — the deck's reference kurti lives in the world (Imran ₹299 → −₹45.97/parcel, −₹46.3k/month; Suresh ₹449 → 0 orders; Anita's re-sourced kurti runs a price ladder), Farida sells zari dupattas, Rekha's costs move under a slab re-card and the monsoon. **Left:** rewrite Story Mode to the deck's nine steps.
+- [~] 9 · README Round-2 section, clean build, deployed. **Left:** 360 px pass on the new screens.
 
 ## Phase 1 notes
 
@@ -64,3 +64,15 @@
   back every upward suggestion in `analyseListing`.
 - `engine/regime.ts` (written early, needed by the config store): credible rival = 4.0★+ with ≥ 2.5% of
   orders; crowded at ≥ 10; dispersed at price CV ≥ 3%. Regime chips are on catalogue rows and SKU detail.
+
+## Phase 5 / 8 notes
+
+- `engine/environment.ts`: a dated, slab-specific freight re-card (501–1000 g, ×1.12, three weeks before
+  "today") and a July–September monsoon return multiplier (×1.25). The clock and the floor both use them,
+  and COST_DRIFT now receives the band as it stood 30 days earlier — before this it could never fire.
+- The clock now steps running price ladders daily (Thompson sampling, 100 shows a day), and enforces the
+  5% loss cap only after every rung has had a week of shows — judged earlier, the cap halted on day one.
+- Listings no longer sell before their listing day; trend SKUs exit after ~10 weeks; seasonal SKUs listed
+  in the festive run-up have their exit pre-scheduled at season end.
+- `data/generator/reference.ts`: the reference cluster's rivals are held still (`stable`) so its ceiling
+  stays ₹352 and the deck's numbers stay reproducible; its listings carry measured rates.

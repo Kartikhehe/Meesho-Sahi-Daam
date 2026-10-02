@@ -16,7 +16,7 @@
  * UI can label imported data honestly.
  */
 
-import { ELASTICITY_BY_CATEGORY, RETURN_RATE_BY_CATEGORY } from "@/engine/constants";
+import { ELASTICITY_BY_CATEGORY } from "@/engine/constants";
 import { rngFor, uniform } from "@/engine/rng";
 import type { AttributeVector, Category, CompetitorListing, DesignCluster, Listing } from "@/engine/types";
 

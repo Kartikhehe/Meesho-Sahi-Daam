@@ -60,6 +60,8 @@ export type DesignCluster = {
   /** Softmax temperature on −elasticity × ln(price). */
   elasticity: number;
   attributes: AttributeVector;
+  /** The deck's reference market: its rivals are held still so its numbers stay reproducible. */
+  stable?: boolean;
   /**
    * A measured demand curve for this design, when one exists (the deck's
    * reference kurti). When present it replaces the softmax-share model.
@@ -77,6 +79,10 @@ export type AttributeVector = {
   occasion: string;
   sleeveType: string;
 };
+
+export type ProductType = "trend" | "evergreen" | "seasonal";
+
+export type CostEvent = { day: number; kind: "FREIGHT_RECARD"; multiplier: number; minGrams: number; maxGrams: number; note: string };
 
 export type LifecycleStage = "S0_LIST" | "S1_DISCOVER" | "S2_CLIMB" | "S3_HARVEST" | "S4_DEFEND" | "S5_EXIT";
 
@@ -100,6 +106,14 @@ export type Listing = {
   attributes: AttributeVector;
   /** Set when a price-ladder experiment is running on this listing. */
   experimentId?: string;
+  /** How long this product lives: trend 6–10 weeks, evergreen, or seasonal. */
+  productType?: ProductType;
+  /** Seasonal SKUs: the calendar pre-schedules their exit at season end. */
+  exitScheduledDay?: number;
+  /** The day it moved to S5 EXIT, for survival curves. */
+  exitedDay?: number;
+  /** Rates measured for this listing specifically, when they differ from the seller's. */
+  measured?: { returnRate?: number; codShare?: number };
 };
 
 /** A rival listing. Public information only — never a cost or a floor. */
@@ -176,6 +190,10 @@ export type World = {
   settlements: SettlementLine[];
   /** Full-history daily aggregates; present on a stored (trimmed) world. */
   daily?: DailyRollup[];
+  /** Dated cost events (freight re-cards) the clock applies. */
+  events?: CostEvent[];
+  /** Each design cluster's regime at the last weekly evaluation. */
+  clusterRegimes?: Record<string, import("./regime").Regime>;
   alerts: FiredTrigger[];
   experiments: LadderExperiment[];
   auditLog: AuditEntry[];
@@ -216,7 +234,8 @@ export type TriggerId =
   | "RETURN_SPIKE"
   | "BELOW_FLOOR"
   | "STAGE_CHANGE"
-  | "STOCK_RISK";
+  | "STOCK_RISK"
+  | "REGIME_SHIFT";
 
 export type FiredTrigger = {
   id: string;
@@ -266,6 +285,8 @@ export type LadderExperiment = {
   arms: ArmState[];
   /** Cumulative rupees given up while learning. Capped at 5%. */
   costOfLearning: number;
+  /** What the base price would have earned over the same days. */
+  baseline?: number;
   status: "running" | "concluded" | "halted_by_cap";
   winningArm?: ArmId;
 };

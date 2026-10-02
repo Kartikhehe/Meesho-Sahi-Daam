@@ -81,6 +81,18 @@ export function advanceStage(
 ): LifecycleStage {
   const age = ageInDays(listing, day);
 
+  // Seasonal SKUs: the calendar pre-schedules their exit at season end.
+  if (listing.exitScheduledDay !== undefined && day >= listing.exitScheduledDay) return "S5_EXIT";
+  // Trend SKUs live 6–10 weeks: compressed stages, exit after day 70.
+  if (listing.productType === "trend") {
+    if (age === 0) return "S0_LIST";
+    if (age <= 7) return "S1_DISCOVER";
+    if (age <= 21) return "S2_CLIMB";
+    if (age <= 49) return "S3_HARVEST";
+    if (age <= 70) return "S4_DEFEND";
+    return "S5_EXIT";
+  }
+
   // Exit: out of stock with nothing moving, or long-dead.
   if (listing.inventory <= 0 && opts.ordersLast30 === 0) return "S5_EXIT";
   if (age > 365 && opts.ordersLast30 === 0) return "S5_EXIT";

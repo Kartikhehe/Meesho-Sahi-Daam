@@ -59,7 +59,7 @@ export const PERSONAS: PersonaSpec[] = [
     offlineMarkup: 3.3,
     listingCount: 62,
     categories: ["kurti", "saree", "co-ord-set"],
-    tagline: "Ported his shop prices online. Almost every listing sits above the ceiling.",
+    tagline: "Ported his shop prices online — ₹449 for a kurti the market sells at ₹329. Dies unseen.",
   },
   {
     id: "slr-imran",
@@ -70,8 +70,8 @@ export const PERSONAS: PersonaSpec[] = [
     archetypeLabel: "matcher",
     // Undercuts everyone, spends hard on ads to hold the top slot, ships a lot
     // of COD into tier-3. Volume looks like success until settlement arrives.
-    codShare: 0.84,
-    adSpendRate: 0.075,
+    codShare: 0.8,
+    adSpendRate: 0.05,
     packagingCost: 8,
     joinedDay: 60,
     treatment: "treated",
@@ -79,7 +79,7 @@ export const PERSONAS: PersonaSpec[] = [
     undercutBy: 6,
     listingCount: 78,
     categories: ["kurti", "co-ord-set", "saree", "jewellery-set"],
-    tagline: "Cheapest listing in every cluster. High volume, and a loss on almost every parcel.",
+    tagline: "₹299 to undercut every rival: plenty of orders, ₹46 lost on each, about ₹47.5k a month.",
   },
   {
     id: "slr-rekha",
@@ -100,7 +100,7 @@ export const PERSONAS: PersonaSpec[] = [
     // freight slabs moved under her. She has not re-priced since.
     listingCount: 54,
     categories: ["kurti", "bedsheet", "kitchen-storage"],
-    tagline: "Set her prices once, eleven months ago. Her costs did not stand still.",
+    tagline: "Priced once, eleven months ago. A freight re-card and the monsoon return spike moved her floor; her prices did not.",
   },
   {
     id: "slr-anita",
@@ -136,8 +136,8 @@ export const PERSONAS: PersonaSpec[] = [
     treatment: "treated",
     pricingRule: "none",
     listingCount: 0,
-    categories: ["kurti", "saree"],
-    tagline: "Day one. Nothing listed yet — every number has to be borrowed from look-alikes.",
+    categories: ["dupatta"],
+    tagline: "Day one in Bareilly with zari dupattas — nothing like them is listed, so every number is borrowed.",
   },
   {
     id: "slr-vikram",

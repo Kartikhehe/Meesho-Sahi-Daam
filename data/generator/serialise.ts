@@ -17,6 +17,7 @@
  */
 
 import { settlementFor } from "@/engine/clock";
+import { freightMultiplierAt } from "@/engine/environment";
 import type { DailyRollup, World } from "@/engine/types";
 
 /**
@@ -88,7 +89,7 @@ export function serialiseWorld(world: World): World {
     alerts: world.alerts
       .filter((a) => a.day > alertCutoff)
       // Drop the stored trace; the UI recomputes it on open.
-      .map(({ trace: _trace, ...rest }) => rest),
+      .map((a) => ({ ...a, trace: undefined })),
   };
 }
 
@@ -108,7 +109,7 @@ export function hydrateWorld(world: World): World {
     if (!listing) return [];
     const seller = sellers.get(listing.sellerId);
     if (!seller) return [];
-    return [settlementFor(order, listing, seller)];
+    return [settlementFor(order, listing, seller, freightMultiplierAt(world, order.day, listing.weightGrams))];
   });
 
   return { ...world, settlements };

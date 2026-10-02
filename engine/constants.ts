@@ -185,6 +185,16 @@ export const CEILING_OVER_WINNING = 1.07;
 /** Below 3.8 stars, conversion falls sharply. Meesho surfaces rating prominently. */
 export const RATING_PENALTY_KNEE = 3.8;
 
+/**
+ * Monsoon return spike: July to September (day-of-year 182–273), returns run
+ * 25% above their usual rate — damp parcels, running colours. Assumption,
+ * consistent with sellers' reports of a monsoon return season.
+ */
+export const MONSOON = { start: 182, end: 273, returnMultiplier: 1.25 } as const;
+
+/** The freight re-card a generated world records, three weeks before "today". */
+export const FREIGHT_RECARD = { daysBeforeEnd: 21, multiplier: 1.12 } as const;
+
 // --- settlement -----------------------------------------------------------
 
 /** Money reaches the seller ~15 days after dispatch. This lag is why she cannot self-diagnose. */
@@ -208,6 +218,10 @@ export const BUYER_PRICE_INDEX_GATE = 100;
 
 /** Exploration during a price ladder may not cost more than 5% of contribution. */
 export const LADDER_LOSS_CAP = 0.05;
+
+/** Impressions a ladder rung is shown to per day, and the shows each rung needs before it can conclude. */
+export const LADDER_SHOWS_PER_DAY = 100;
+export const LADDER_MIN_SHOWS = 1500;
 
 /** The three rungs of the price ladder, as multiples of the launch price. */
 export const LADDER_ARMS = [0.94, 1.0, 1.06] as const;

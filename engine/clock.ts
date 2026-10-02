@@ -32,6 +32,10 @@ import { ordersPerDay } from "./demand";
 import { freightFor } from "./money";
 import { chance, normal, pickWeighted, rngFor, uniform } from "./rng";
 import { advanceStage } from "./lifecycle";
+import { envAt, type CostEnv } from "./environment";
+import { classifyRegime, type Regime } from "./regime";
+import { armPrice, conclude, enforceLossCap, nextArm, shouldConclude, updateArmDay } from "./bandit";
+import { LADDER_MIN_SHOWS, LADDER_SHOWS_PER_DAY } from "./constants";
 import { applyWeeklyCap, evaluateTriggers, type TriggerContext } from "./triggers";
 import type {
   CompetitorListing,
@@ -51,17 +55,24 @@ export function rtoRateFor(seller: Seller, tierMultiplier = 1): number {
   return blended * RTO_BY_COD.dampening * tierMultiplier;
 }
 
-export function returnRateFor(listing: Listing): number {
-  return RETURN_RATE_BY_CATEGORY[listing.category] ?? 0.12;
+export function returnRateFor(listing: Listing, returnsMultiplier = 1): number {
+  const base = listing.measured?.returnRate ?? RETURN_RATE_BY_CATEGORY[listing.category] ?? 0.12;
+  return Math.min(0.6, base * returnsMultiplier);
 }
 
-/** The cost inputs for one listing, assembled from her own ledger. */
-export function costInputsFor(listing: Listing, seller: Seller): CostInputs {
-  const forward = freightFor(listing.weightGrams);
+const NEUTRAL: CostEnv = { freight: () => 1, returns: 1 };
+
+/**
+ * The cost inputs for one listing, assembled from her own ledger, under the
+ * cost conditions (freight re-cards, monsoon returns) of a given day.
+ */
+export function costInputsFor(listing: Listing, seller: Seller, env: CostEnv = NEUTRAL): CostInputs {
+  const forward = freightFor(listing.weightGrams) * env.freight(listing.weightGrams);
+  const codShare = listing.measured?.codShare ?? seller.codShare;
   return {
     cogs: listing.cogs,
-    rtoRate: rtoRateFor(seller),
-    returnRate: returnRateFor(listing),
+    rtoRate: rtoRateFor({ ...seller, codShare }),
+    returnRate: returnRateFor(listing, env.returns),
     adSpendRate: seller.adSpendRate ?? AD_SPEND_RATE_DEFAULT,
     forwardFreight: forward,
     reverseFreight: forward * REVERSE_FREIGHT_MULTIPLIER,
@@ -80,11 +91,12 @@ function resolveOutcome(
   listing: Listing,
   tierMultiplier: number,
   paymentMode: PaymentMode,
+  returnsMultiplier = 1,
 ): OrderOutcome {
   const rtoBase = paymentMode === "cod" ? RTO_BY_COD.cod : RTO_BY_COD.prepaid;
   const rto = rtoBase * RTO_BY_COD.dampening * tierMultiplier;
   if (chance(rng, rto)) return "rto";
-  if (chance(rng, returnRateFor(listing))) return "returned";
+  if (chance(rng, returnRateFor(listing, returnsMultiplier))) return "returned";
   return "delivered";
 }
 
@@ -97,8 +109,9 @@ export function settlementFor(
   order: OrderEvent,
   listing: Listing,
   seller: Seller,
+  freightMultiplier = 1,
 ): SettlementLine {
-  const forward = freightFor(listing.weightGrams);
+  const forward = freightFor(listing.weightGrams) * freightMultiplier;
   const reverse = forward * REVERSE_FREIGHT_MULTIPLIER;
   const paid = order.outcome === "delivered";
 
@@ -148,7 +161,9 @@ function driftCompetitors(world: World, day: number): CompetitorListing[] {
     if (prices.length) medians.set(cluster.id, prices[Math.floor(prices.length / 2)] ?? 0);
   }
 
+  const stable = new Set(world.clusters.filter((c) => c.stable).map((c) => c.id));
   return world.competitors.map((c) => {
+    if (stable.has(c.clusterId)) return c;
     const rng = rngFor(world.seed, "competitor", c.id, day);
     const median = medians.get(c.clusterId) ?? c.price;
     const reversion = (median - c.price) * 0.02;
@@ -189,22 +204,47 @@ export function advanceDays(world: World, days: number): AdvanceResult {
 
   for (let i = 0; i < days; i++) {
     const day = current.day + 1;
+    const env = envAt(current, day);
     const newOrders: OrderEvent[] = [];
     const newSettlements: SettlementLine[] = [];
+    let experiments = current.experiments;
+    /** Today's selling price for listings on a price ladder. */
+    const ladderPrice = new Map<string, number>();
 
     // 1. Competitor prices drift, then shares rebalance to match.
     const competitors = rebalanceShares(driftCompetitors(current, day), current.clusters);
 
     // 2. Orders for every live listing.
     for (const listing of current.listings) {
-      if (listing.stage === "S5_EXIT" || listing.inventory <= 0) continue;
+      if (listing.stage === "S5_EXIT" || listing.inventory <= 0 || listing.listedDay > day) continue;
       const cluster = current.clusters.find((c) => c.id === listing.clusterId);
       const seller = current.sellers.find((s) => s.id === listing.sellerId);
       if (!cluster || !seller) continue;
 
       const rivals = competitors.filter((c) => c.clusterId === listing.clusterId);
       const ceiling = estimateCeiling(rivals).value;
-      const expected = ordersPerDay(listing, cluster, rivals, ceiling, day, current.seed).value;
+
+      // A running price ladder picks today's rung by Thompson sampling.
+      const exp = listing.experimentId ? experiments.find((e) => e.id === listing.experimentId && e.status === "running") : undefined;
+      const inputs = costInputsFor(listing, seller, env);
+      let selling = listing;
+      if (exp) {
+        const arm = nextArm(exp, (p) => contributionPerOrder(p, inputs).value, day, current.seed).value;
+        selling = { ...listing, price: armPrice(exp, arm) };
+        ladderPrice.set(listing.id, selling.price);
+        const expectedArm = ordersPerDay(selling, cluster, rivals, ceiling, day, current.seed).value;
+        const expectedBase = ordersPerDay({ ...listing, price: exp.basePrice }, cluster, rivals, ceiling, day, current.seed).value;
+        const sold = Math.min(LADDER_SHOWS_PER_DAY, Math.round(expectedArm));
+        let next = updateArmDay(exp, arm, sold, LADDER_SHOWS_PER_DAY, sold * contributionPerOrder(selling.price, inputs).value);
+        next = { ...next, baseline: (next.baseline ?? 0) + expectedBase * contributionPerOrder(exp.basePrice, inputs).value };
+        // The 5% cap is judged once every rung has had a week of shows; before
+        // that the baseline is too small for the ratio to mean anything, and
+        // a day-one halt would settle on whichever rung happened to go first.
+        if (next.arms.every((a) => a.impressions >= 7 * LADDER_SHOWS_PER_DAY)) next = enforceLossCap(next, next.baseline ?? 0);
+        if (next.status === "running" && shouldConclude(next, LADDER_MIN_SHOWS)) next = conclude(next);
+        experiments = experiments.map((e) => (e.id === next.id ? next : e));
+      }
+      const expected = ordersPerDay(selling, cluster, rivals, ceiling, day, current.seed).value;
 
       // Fractional expectation → integer orders, without losing the fraction.
       const rng = rngFor(current.seed, "orders", listing.id, day);
@@ -214,20 +254,23 @@ export function advanceDays(world: World, days: number): AdvanceResult {
       for (let k = 0; k < count; k++) {
         const orderRng = rngFor(current.seed, "order", listing.id, day, k);
         const tier = pickWeighted(orderRng, PINCODE_TIERS, (t) => t.share) ?? PINCODE_TIERS[0];
-        const paymentMode: PaymentMode = chance(orderRng, tier.codPropensity) ? "cod" : "prepaid";
-        const outcome = resolveOutcome(orderRng, seller, listing, tier.rtoMultiplier, paymentMode);
+        // A listing with its own measured cash-on-delivery mix uses it; otherwise
+        // payment mode follows the destination tier's propensity.
+        const codP = listing.measured?.codShare ?? tier.codPropensity;
+        const paymentMode: PaymentMode = chance(orderRng, codP) ? "cod" : "prepaid";
+        const outcome = resolveOutcome(orderRng, seller, listing, tier.rtoMultiplier, paymentMode, env.returns);
 
         const order: OrderEvent = {
           id: `ord-${listing.id}-${day}-${k}`,
           listingId: listing.id,
           day,
-          price: listing.price,
+          price: selling.price,
           paymentMode,
           pincodeTier: tier.tier,
           outcome,
         };
         newOrders.push(order);
-        newSettlements.push(settlementFor(order, listing, seller));
+        newSettlements.push(settlementFor(order, listing, seller, env.freight(listing.weightGrams)));
       }
     }
     ordersCreated += newOrders.length;
@@ -250,7 +293,7 @@ export function advanceDays(world: World, days: number): AdvanceResult {
       if (seller) {
         const rivals = competitors.filter((c) => c.clusterId === listing.clusterId);
         const ceiling = estimateCeiling(rivals).value;
-        const floor = survivalPrice(costInputsFor(listing, seller)).value;
+        const floor = survivalPrice(costInputsFor(listing, seller, env)).value;
         band = classifyBand(floor, ceiling, listing.price).value;
       }
       // Sellers reorder. A listing that is still selling gets restocked when it
@@ -263,20 +306,30 @@ export function advanceDays(world: World, days: number): AdvanceResult {
           ? remaining + Math.max(30, Math.round(ordersLast30 * 2.5))
           : remaining;
 
+      const stage = advanceStage(listing, day, { ordersLast30, band });
+      // A concluded ladder settles the price on the rung that earned most.
+      const exp = listing.experimentId ? experiments.find((e) => e.id === listing.experimentId) : undefined;
+      const settled = exp && exp.status !== "running" && exp.winningArm !== undefined ? armPrice(exp, exp.winningArm) : undefined;
+
       return {
         ...listing,
+        price: settled ?? listing.price,
+        experimentId: settled !== undefined ? undefined : listing.experimentId,
         inventory: restocked,
-        stage: advanceStage(listing, day, { ordersLast30, band }),
+        stage,
+        exitedDay: stage === "S5_EXIT" ? (listing.exitedDay ?? day) : listing.exitedDay,
       };
     });
 
-    current = { ...current, day, competitors, orders, settlements, listings };
+    current = { ...current, day, competitors, orders, settlements, listings, experiments };
 
-    // 5. Triggers, once a week, so the weekly cap means something.
+    // 5. Triggers, once a week, so the weekly cap means something. Regimes are
+    //    re-read first, so a shift can fire this same week.
     if (day % 7 === 0) {
-      const fired = evaluateWeek(current, day);
+      const regimes = clusterRegimes(current);
+      const fired = evaluateWeek(current, day, regimes);
       alertsRaised += fired.filter((f) => !f.muted).length;
-      current = { ...current, alerts: [...current.alerts, ...fired] };
+      current = { ...current, alerts: [...current.alerts, ...fired], clusterRegimes: regimes };
     }
   }
 
@@ -284,7 +337,13 @@ export function advanceDays(world: World, days: number): AdvanceResult {
 }
 
 /** Evaluate every seller's listings and apply the per-seller weekly cap. */
-export function evaluateWeek(world: World, day: number) {
+export function clusterRegimes(world: World): Record<string, Regime> {
+  const out: Record<string, Regime> = {};
+  for (const c of world.clusters) out[c.id] = classifyRegime(rivalsOf(world, c.id), undefined, world.clusterRegimes?.[c.id]).value;
+  return out;
+}
+
+export function evaluateWeek(world: World, day: number, regimes: Record<string, Regime> = clusterRegimes(world)) {
   const out = [];
   for (const seller of world.sellers) {
     const candidates: { result: ReturnType<typeof evaluateTriggers>[number]; listingId: string }[] = [];
@@ -294,10 +353,14 @@ export function evaluateWeek(world: World, day: number) {
       const rivals = rivalsOf(world, listing.clusterId);
       if (!rivals.length) continue;
 
-      const inputs = costInputsFor(listing, seller);
+      const inputs = costInputsFor(listing, seller, envAt(world, day));
       const floor = survivalPrice(inputs).value;
       const ceiling = estimateCeiling(rivals).value;
       const band = classifyBand(floor, ceiling, listing.price).value;
+      // The band as it stood 30 days ago — so COST_DRIFT sees a re-card or a
+      // monsoon return spike move the floor under a price that did not move.
+      const prevFloor = survivalPrice(costInputsFor(listing, seller, envAt(world, day - 30))).value;
+      const previousBand = classifyBand(prevFloor, ceiling, listing.price).value;
 
       const listingOrders = world.orders.filter((o) => o.listingId === listing.id);
       const ordersLast30 = listingOrders.filter((o) => o.day > day - 30).length;
@@ -314,6 +377,9 @@ export function evaluateWeek(world: World, day: number) {
         returnRate30: recent.length ? returned / recent.length : 0,
         returnRateBaseline: returnRateFor(listing),
         daysSincePriceChange: day - listing.listedDay,
+        previousBand,
+        regime: regimes[listing.clusterId],
+        previousRegime: world.clusterRegimes?.[listing.clusterId],
       };
 
       for (const result of evaluateTriggers(ctx)) {

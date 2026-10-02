@@ -11,6 +11,7 @@
  */
 
 import { ALERT_CAP_PER_WEEK } from "./constants";
+import { REGIME_TEMPO, type Regime } from "./regime";
 import { step, traced, type Traced } from "./trace";
 import type { BandAnalysis, FiredTrigger, Listing, TriggerId } from "./types";
 
@@ -29,6 +30,9 @@ export type TriggerContext = {
   returnRate30: number;
   returnRateBaseline: number;
   daysSincePriceChange: number;
+  /** The design's regime now, and at the previous weekly evaluation. */
+  regime?: Regime;
+  previousRegime?: Regime;
 };
 
 export type TriggerResult = {
@@ -196,7 +200,35 @@ function stockRisk(ctx: TriggerContext): TriggerResult {
   };
 }
 
-export const EVALUATORS = [belowFloor, returnSpike, costDrift, rivalUndercut, stockRisk, stageChange];
+/**
+ * 7. The design's market regime changed — rivals crossed the crowding line,
+ * or price dispersion collapsed into a commodity. The pricing tempo (ladder
+ * width, harvest pace) should switch with it.
+ */
+function regimeShift(ctx: TriggerContext): TriggerResult {
+  const fired = !!ctx.regime && !!ctx.previousRegime && ctx.regime !== ctx.previousRegime;
+  const from = ctx.previousRegime ? REGIME_TEMPO[ctx.previousRegime] : null;
+  const to = ctx.regime ? REGIME_TEMPO[ctx.regime] : null;
+  // Assumption: keeping the old tempo in a changed market costs about a tenth
+  // of the listing's monthly contribution (ranking only; shown as such).
+  const impact = fired ? Math.max(50, Math.abs(ctx.contributionPerOrder) * monthlyVolume(ctx.ordersLast30) * 0.1) : 0;
+
+  return {
+    fired,
+    triggerId: "REGIME_SHIFT",
+    severity: ctx.regime === "RED_OCEAN" ? "high" : "medium",
+    rupeeImpact: impact,
+    message: `The market for ${ctx.listing.name} has changed from ${from?.label ?? "—"} to ${to?.label ?? "—"}. We are switching its pricing tempo: ladder ±${Math.round((to?.ladder ?? 0) * 100)}%, price rises of ${Math.round((to?.harvestStep ?? 0) * 100)}% every ${to?.harvestDays ?? 0} days.`,
+    messageHi: `${ctx.listing.name} का बाज़ार बदल गया है — ${from?.labelHi ?? ""} से ${to?.labelHi ?? ""}। अब दाम बदलने की रफ़्तार भी बदलेगी।`,
+    trace: traced(impact, [
+      step("Regime before", "पहले का बाज़ार", from?.label ?? "—", 0, "COUNT", "cluster_model"),
+      step("Regime now", "अब का बाज़ार", to?.label ?? "—", 0, "COUNT", "cluster_model", to?.note),
+      step("Monthly contribution at stake", "महीने की कमाई पर असर", "≈ 10% of this listing's monthly contribution (assumption)", impact, "INR", "derived"),
+    ]),
+  };
+}
+
+export const EVALUATORS = [belowFloor, returnSpike, costDrift, rivalUndercut, stockRisk, stageChange, regimeShift];
 
 export const TRIGGER_COPY: Record<TriggerId, { label: string; labelHi: string; about: string }> = {
   BELOW_FLOOR: { label: "Below floor", labelHi: "सुरक्षा दाम से नीचे", about: "The price is under your own break-even." },
@@ -204,6 +236,7 @@ export const TRIGGER_COPY: Record<TriggerId, { label: string; labelHi: string; a
   COST_DRIFT: { label: "Costs moved", labelHi: "लागत बदली", about: "Freight, returns or ads changed your survival price." },
   RIVAL_UNDERCUT: { label: "Undercut", labelHi: "सस्ता प्रतियोगी", about: "A similar listing is meaningfully cheaper." },
   STOCK_RISK: { label: "Stock running out", labelHi: "स्टॉक कम", about: "An earning listing is about to go out of stock." },
+  REGIME_SHIFT: { label: "Market changed", labelHi: "बाज़ार बदला", about: "Rivals crossed the crowding line, or prices bunched into a commodity." },
   STAGE_CHANGE: { label: "Room to rise", labelHi: "दाम बढ़ाने की जगह", about: "Reviews now support a higher price." },
 };
 

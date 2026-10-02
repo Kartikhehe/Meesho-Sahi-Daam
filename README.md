@@ -30,10 +30,52 @@ variables, no network calls at runtime.** It runs on a laptop with the wifi swit
 `npm run verify` is the one to run first. It proves the arithmetic without a browser:
 
 ```
-✓ all 55 checks passed
+✓ all 86 checks passed
 ```
 
 ---
+
+## Round 2 — what changed
+
+The engine now follows the Round-2 deck's model, and **every golden number in the deck is an automated
+check** (`npm run verify`):
+
+| Deck figure | Engine |
+|---|---|
+| Survival floor, reference kurti | ₹374.98 |
+| After the three unlocks (COGS 158, returns 13%, COD 55%) | ₹312.8 |
+| Contribution at ₹305 / at ₹334 after unlocks | −₹42.34 / +₹14.75 |
+| ₹299 / ₹305 / ₹329 / ₹334-after, per month | −₹47,517 / −₹39,164 / −₹12,350 / +₹5,190 |
+| Profit-maximising launch after unlocks | ₹333 |
+| Band after unlocks, m = 3% | ₹322 – ₹352 |
+| Day-zero 80% floor band at 0 / 30 / 90 / 270 own orders | ±₹28 / ±20 / ±14 / ±9 |
+| P(floor > ₹352 ceiling) on day zero | 85% |
+
+The day-zero band and the 85% are **derived**, not typed: prior uncertainty on returns and refusals is
+propagated through the floor formula and shrunk with the credibility constant (30).
+
+New in the product:
+
+- **Day-zero data as a visible system** — returns fall back own → design cluster → category → platform,
+  refusals are priced buyer-side (pincode tier × payment mode), both blended as
+  `(n·own + 30·prior) ÷ (n + 30)`. Every trace row carries a basis chip
+  (`SELLER` / `MEESHO · exact` / `MEESHO · prior: design cluster, n=…`), and the floor is shown as a
+  range while a seller's own data is thin.
+- **Band rule** `[floor × (1 + 3%), ceiling]` → DON'T LIST / DIFFERENTIATE / launch at the
+  profit-maximising price / PRICE FOR MARGIN (with a sourcing flag).
+- **Hard cases** — "I'm not sure of my cost" ladder, a clearly-labelled *mock* bill reader, no-twins
+  category prior (try a zari dupatta), "My cost is different" overrides (audited), Hindi voice preview,
+  a Meesho-only note, and a gentle implausible-cost nudge.
+- **Market regimes** — RED OCEAN / CONTESTED / NICHE / NEW-THIN per design, from credible-rival
+  crowding × price dispersion; a 7th trigger, REGIME SHIFT.
+- **Cost conditions move** — a dated freight re-card on the 501–1000 g slab and a monsoon return spike
+  feed the floor, so COST_DRIFT alerts genuinely fire.
+- **The deck's reference kurti lives in the world** — Imran at ₹299 (−₹46 a parcel), Suresh at ₹449
+  (0 orders), Anita's re-sourced version running a real price ladder.
+- **Buyer Price Index enforced** — Admin → Guardrails can push treated prices up 6%; the index breaches
+  and every upward suggestion in the app pauses.
+
+See `UPGRADE_PLAN.md` and `UPGRADE_PROGRESS.md` for the item-by-item status.
 
 ## The problem
 

@@ -19,6 +19,8 @@ import { Skeleton, StateGate } from "@/components/shared/empty-state";
 import { ChartFrame } from "@/components/charts/chart-frame";
 import { useWorld } from "@/lib/use-seller";
 import { useAudit } from "@/lib/audit";
+import { useConfigStore } from "@/lib/store/config-store";
+import { buyerPriceIndex } from "@/lib/guardrails";
 import { ALERT_CAP_PER_WEEK, BUYER_PRICE_INDEX_GATE } from "@/engine/constants";
 import { count } from "@/lib/format";
 import { Page, PageHeader } from "@/components/shared/page-header";
@@ -27,7 +29,8 @@ export default function GuardrailsPage() {
   const { world, status, error } = useWorld();
   const audit = useAudit();
 
-  const [simulatedBpi, setSimulatedBpi] = useState<number | null>(null);
+  const priceBump = useConfigStore((s) => s.priceBump);
+  const setConfig = useConfigStore((s) => s.set);
   const [killed, setKilled] = useState(false);
   const [confirmKill, setConfirmKill] = useState(false);
   const [autoPilot, setAutoPilot] = useState(false);
@@ -54,7 +57,8 @@ export default function GuardrailsPage() {
   }, [world]);
 
   const liveBpi = series.length ? (series[series.length - 1]?.index ?? 100) : 100;
-  const bpi = simulatedBpi ?? liveBpi;
+  // With the price lever on, the index is read from the prices now listed.
+  const bpi = priceBump && world ? buyerPriceIndex(world) : liveBpi;
   const breached = bpi > BUYER_PRICE_INDEX_GATE;
 
   const toggleKill = () => {
@@ -130,14 +134,24 @@ export default function GuardrailsPage() {
 
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">
             <span className="text-[12px] text-[var(--text-muted)]">
-              Make the breach reachable for a demo:
+              Push treated sellers&rsquo; prices up 6% to see the guardrail act — every upward suggestion in the app pauses:
             </span>
             <Button
               size="sm"
-              variant={simulatedBpi !== null ? "primary" : "secondary"}
-              onClick={() => setSimulatedBpi(simulatedBpi === null ? 103.4 : null)}
+              variant={priceBump ? "primary" : "secondary"}
+              onClick={() => {
+                const next = priceBump ? 0 : 0.06;
+                setConfig({ priceBump: next });
+                audit({
+                  capability: "admin.guardrails",
+                  action: next ? "Pushed treated sellers' prices up 6%" : "Restored treated sellers' prices",
+                  subject: "Buyer Price Index demo lever",
+                  after: next ? "+6%" : "off",
+                  blastRadius: "Every treated seller's listed price; upward suggestions pause while the index is above 100",
+                });
+              }}
             >
-              {simulatedBpi === null ? "Simulate a breach" : "Back to live data"}
+              {priceBump ? "Restore prices" : "Push prices up 6%"}
             </Button>
           </div>
 
