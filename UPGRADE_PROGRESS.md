@@ -2,6 +2,10 @@
 
 **Resume point.** Read this, then `UPGRADE_PLAN.md`.
 
+- **Live:** https://sahi-daam-livid.vercel.app
+- **Repo:** https://github.com/Kartikhehe/sahi-daam
+- Redeploy: `vercel deploy --prod --yes --name sahi-daam`. Never run `npm run build` while `npm run dev` is running — both write `.next`.
+
 | | |
 |---|---|
 | **Phase in progress** | Phase 6 — trust ladder + Auto-Pilot (store state exists; no screen yet) |
