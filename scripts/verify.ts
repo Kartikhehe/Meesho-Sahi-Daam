@@ -15,6 +15,7 @@ import { buildWaterfall } from "../engine/waterfall";
 import { monthlyContribution, profitMaxPrice } from "../engine/launch";
 import { floorBand, probFloorAbove, rtoForCodShare } from "../engine/uncertainty";
 import { resolveNewListingMarket } from "../lib/new-listing-market";
+import { estimateReturns, estimateRto } from "../engine/priors";
 import { REFERENCE_AFTER, REFERENCE_BEFORE, REFERENCE_CEILING, REFERENCE_DEMAND } from "../engine/reference";
 import { priceShare, visibilityGate } from "../engine/demand";
 import { findTwins } from "../engine/twins";
@@ -169,6 +170,21 @@ section("New listing — no twins falls back to a category prior");
   const kur = resolveNewListingMarket(w0, { seller, category: "kurti", cogs: 100, grams: 450 });
   checkEq("a kurti finds twins → TWINS", kur.route, "TWINS");
   checkEq("day-zero floor is a range", kur.range.value.high > kur.range.value.low, true);
+}
+
+section("Fallback ladder and credibility blending");
+{
+  const w1 = advanceDays(buildEmptyWorld(230540), 60).world;
+  const farida = w1.sellers.find((x) => x.id === "slr-farida")!;
+  const fr = estimateRto(w1, farida.id, 0.8);
+  checkEq("day-zero seller: n = 0, prior used as-is", fr.n === 0 && fr.value === fr.prior, true);
+  check("buyer-side RTO prior at 80% COD ≈ 17%", fr.value, 0.17, 0.02);
+  checkEq("basis names the prior and its n", fr.basis.startsWith("MEESHO · prior"), true);
+  const l = w1.listings.find((x) => x.sellerId === "slr-imran")!;
+  const r = estimateReturns(w1, l);
+  const expect = r.own === null ? r.prior : (r.n * r.own + 30 * r.prior) / (r.n + 30);
+  check("returns = (n·own + 30·prior) ÷ (n + 30)", r.value, expect, 1e-12);
+  checkEq("prior level is the design cluster when it has data", r.priorLevel, "design cluster");
 }
 
 section("Determinism  —  same seed, same world");

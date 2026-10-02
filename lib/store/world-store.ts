@@ -39,10 +39,29 @@ type WorldState = {
   appendAudit: (entry: Omit<AuditEntry, "id" | "timestamp">) => void;
 };
 
+export type AutoMove = {
+  id: string;
+  listingId: string;
+  from: number;
+  to: number;
+  day: number;
+  /** "Why did this change?" — one plain sentence. */
+  why: string;
+  undone?: boolean;
+};
+
+export type TrustMode = "guided" | "assisted" | "autopilot";
+
 type PersistedState = {
   priceOverrides: Record<string, number>;
   acknowledgedAlerts: string[];
   auditLog: AuditEntry[];
+  /** Freight / packaging a seller has overridden, per listing. */
+  costOverrides: Record<string, { forwardFreight?: number; reverseFreight?: number; packaging?: number }>;
+  /** Recommendations accepted, per seller — the trust ladder's evidence. */
+  accepted: Record<string, number>;
+  trustMode: Record<string, TrustMode>;
+  autoMoves: AutoMove[];
 };
 
 /** Overrides and audit entries live in their own persisted store. */
@@ -52,6 +71,11 @@ export const useSellerStore = create<
     acknowledge: (alertId: string) => void;
     append: (entry: AuditEntry) => void;
     clear: () => void;
+    setCostOverride: (listingId: string, o: { forwardFreight?: number; reverseFreight?: number; packaging?: number } | null) => void;
+    recordAccept: (sellerId: string, n?: number) => void;
+    setTrustMode: (sellerId: string, mode: TrustMode) => void;
+    logAutoMoves: (moves: AutoMove[]) => void;
+    markUndone: (id: string) => void;
   }
 >()(
   persist(
@@ -59,6 +83,21 @@ export const useSellerStore = create<
       priceOverrides: {},
       acknowledgedAlerts: [],
       auditLog: [],
+      costOverrides: {},
+      accepted: {},
+      trustMode: {},
+      autoMoves: [],
+      setCostOverride: (listingId, o) =>
+        set((s) => {
+          const next = { ...s.costOverrides };
+          if (o && Object.keys(o).length) next[listingId] = o;
+          else delete next[listingId];
+          return { costOverrides: next };
+        }),
+      recordAccept: (sellerId, n = 1) => set((s) => ({ accepted: { ...s.accepted, [sellerId]: (s.accepted[sellerId] ?? 0) + n } })),
+      setTrustMode: (sellerId, mode) => set((s) => ({ trustMode: { ...s.trustMode, [sellerId]: mode } })),
+      logAutoMoves: (moves) => set((s) => ({ autoMoves: [...moves, ...s.autoMoves].slice(0, 300) })),
+      markUndone: (id) => set((s) => ({ autoMoves: s.autoMoves.map((m) => (m.id === id ? { ...m, undone: true } : m)) })),
       setPrice: (listingId, price) =>
         set((s) => ({ priceOverrides: { ...s.priceOverrides, [listingId]: price } })),
       acknowledge: (alertId) =>
@@ -68,7 +107,7 @@ export const useSellerStore = create<
             : [...s.acknowledgedAlerts, alertId],
         })),
       append: (entry) => set((s) => ({ auditLog: [entry, ...s.auditLog].slice(0, 500) })),
-      clear: () => set({ priceOverrides: {}, acknowledgedAlerts: [], auditLog: [] }),
+      clear: () => set({ priceOverrides: {}, acknowledgedAlerts: [], auditLog: [], costOverrides: {}, accepted: {}, trustMode: {}, autoMoves: [] }),
     }),
     { name: "sahi-daam.seller", storage: createJSONStorage(() => localStorage) },
   ),

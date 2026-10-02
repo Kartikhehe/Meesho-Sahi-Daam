@@ -15,6 +15,8 @@ import { Check, MessageCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/shared/status-chip";
+import { VoicePreview } from "@/components/shared/voice-preview";
+import { alertScript } from "@/content/voice";
 import { EmptyState, Skeleton, StateGate } from "@/components/shared/empty-state";
 import { TRIGGER_COPY } from "@/engine/triggers";
 import { ALERT_CAP_PER_WEEK } from "@/engine/constants";
@@ -206,6 +208,7 @@ function AlertCard({
               सही दाम · Reply STOP to pause these
             </p>
           </div>
+          <VoicePreview className="mt-3" script={alertScript(alert.messageHi, alert.rupeeImpact)} />
           {!message.translated ? (
             <p className="mt-2 text-[11px] leading-relaxed text-[var(--warning)]">
               This language is not translated yet, so the English text is shown. We would rather say

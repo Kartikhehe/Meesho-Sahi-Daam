@@ -4,16 +4,16 @@
 
 | | |
 |---|---|
-| **Phase in progress** | Phase 3 — fallback ladder, blending, ranges, buyer-side RTO, source chips |
-| **Next file to touch** | `engine/priors.ts` (new) |
-| **Known breakage** | None. Build clean; `npm run verify` → 81/81 |
+| **Phase in progress** | Phase 5 — regimes: REGIME SHIFT trigger, product-type lifecycle, 2×2 map, admin params |
+| **Next file to touch** | `engine/triggers.ts` (7th trigger), then `engine/lifecycle.ts` |
+| **Known breakage** | None. Build clean; `npm run verify` → 86/86 |
 
 ## Phases
 
 - [x] **1 · Golden numbers** — every figure in deck §1 is an engine test and passes.
 - [x] **2 · Band rule** — `[floor·(1+m), ceiling]`, four launch verdicts, profit-max suggestion everywhere
-- [ ] 3 · Fallback ladder, credibility blending, ranges, buyer-side RTO, source chips
-- [ ] 4 · Six hard cases
+- [x] **3 · Day-zero data** — fallback ladder, credibility blending, floor range + narrowing chart, buyer-side RTO, basis chips
+- [x] **4 · Six hard cases** — cost ladder + mock bill reader, no-twins prior, "My cost is different" (audited), Meesho-only note, Hindi voice, plausibility nudge
 - [ ] 5 · Regimes, REGIME SHIFT trigger, product-type lifecycle, chips, 2×2 map
 - [ ] 6 · Trust ladder + Auto-Pilot
 - [ ] 7 · Manager and Admin additions
@@ -48,3 +48,19 @@
   the plausibility nudge, the Hindi voice preview and the Meesho-only note.
 - DON'T LIST now names the lever that moves the floor *most* at a realistic move (`components/listing/levers.ts`),
   and says whether it alone is enough.
+
+## Phases 3–4 notes
+
+- `engine/priors.ts`: returns fall back own → design cluster → category → platform (first level with ≥100
+  parcels); RTO is buyer-side (pincode tier × payment mode) at her COD mix. Both blended with her own by
+  K = 30, and each carries a trace showing n, prior level and the blend.
+- The **UI** analysis (`lib/selectors.ts → costInputsBlended`) uses blended rates; the **clock** keeps the
+  faster constant-rate inputs for its daily simulation. They agree closely (both centre on the same
+  rates) but are not identical — documented rather than hidden.
+- Every trace row now carries a basis chip: SELLER / SELLER · custom / MEESHO · exact / MEESHO · prior: …, n=… / Statutory.
+- `lib/store/config-store.ts` holds margin, K, band confidence, regime thresholds, kill switch and the
+  admin's price lever; `lib/use-seller.ts` turns them into the options every analysis uses.
+- The BPI guardrail is real now: `lib/guardrails.ts` computes it from listed prices, and a breach holds
+  back every upward suggestion in `analyseListing`.
+- `engine/regime.ts` (written early, needed by the config store): credible rival = 4.0★+ with ≥ 2.5% of
+  orders; crowded at ≥ 10; dispersed at price CV ≥ 3%. Regime chips are on catalogue rows and SKU detail.

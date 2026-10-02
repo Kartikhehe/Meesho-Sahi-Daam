@@ -21,12 +21,19 @@ import { Callout } from "@/components/shared/callout";
 import { StatStrip } from "@/components/shared/stat-strip";
 import { VERDICT_COPY } from "@/engine/band";
 import { contributionPerOrder } from "@/engine/cost";
-import { useWorldStore } from "@/lib/store/world-store";
+import { useSellerStore, useWorldStore } from "@/lib/store/world-store";
+import { useConfigStore } from "@/lib/store/config-store";
+import { FloorRangeChart } from "@/components/charts/floor-range-chart";
+import { MeeshoScope } from "@/components/shared/meesho-scope";
 import type { ListingAnalysis } from "@/lib/selectors";
 import { count, inr } from "@/lib/format";
 
 export function PriceTab({ analysis }: { analysis: ListingAnalysis }) {
   const setPrice = useWorldStore((s) => s.setPrice);
+  const recordAccept = useSellerStore((s) => s.recordAccept);
+  const k = useConfigStore((s) => s.credibilityK);
+  const confidence = useConfigStore((s) => s.bandConfidence);
+  const thin = analysis.range.value.n < k;
   const [custom, setCustom] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const [saved, setSaved] = useState<number | null>(null);
@@ -36,8 +43,9 @@ export function PriceTab({ analysis }: { analysis: ListingAnalysis }) {
   const recommended = band.value.recommended;
   const atRecommended = recommended > 0 ? contributionPerOrder(recommended, analysis.inputs) : null;
 
-  const apply = (price: number) => {
+  const apply = (price: number, accepted = false) => {
     setPrice(listing.id, price);
+    if (accepted) recordAccept(analysis.seller.id);
     setSaved(price);
     setShowCustom(false);
   };
@@ -86,8 +94,22 @@ export function PriceTab({ analysis }: { analysis: ListingAnalysis }) {
         ]}
       />
       <p className="type-caption -mt-1 px-1 text-[var(--text-subtle)]">
-        Tap any underlined figure to see exactly how it is worked out.
+        {thin ? (
+          <>
+            With {analysis.range.value.n} of your own delivered orders so far, your floor is most likely between{" "}
+            <strong className="text-[var(--text)]">{inr(analysis.range.value.low)} and {inr(analysis.range.value.high)}</strong>{" "}
+            ({Math.round(analysis.range.value.confidence * 100)}% range). It narrows as orders arrive.{" "}
+          </>
+        ) : null}
+        Tap any underlined figure to see exactly how it is worked out — each input says whether it is yours, exact from Meesho, or a prior.
       </p>
+
+      {analysis.upwardHeld ? (
+        <Callout tone="warning" title="Upward suggestions are paused">
+          The Buyer Price Index is above 100 — prices across the programme have risen against the control group — so we are
+          not suggesting any price rise until it falls. Suggestions that lower a price still stand.
+        </Callout>
+      ) : null}
 
       {saved !== null ? (
         <Callout tone="success" title={`Price set to ${inr(saved)}`}>
@@ -137,7 +159,7 @@ export function PriceTab({ analysis }: { analysis: ListingAnalysis }) {
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {recommended > 0 && recommended !== listing.price ? (
-              <Button variant="primary" onClick={() => apply(recommended)}>
+              <Button variant="primary" onClick={() => apply(recommended, true)}>
                 <Check size={16} aria-hidden />
                 Accept {inr(recommended)}
               </Button>
@@ -180,6 +202,10 @@ export function PriceTab({ analysis }: { analysis: ListingAnalysis }) {
         </Card>
       )}
 
+      <Card className="p-4 sm:p-5">
+        <FloorRangeChart inputs={analysis.inputs} n={analysis.range.value.n} codShare={analysis.seller.codShare} k={k} confidence={confidence} />
+      </Card>
+
       <StatStrip
         stats={[
           { label: "Orders, last 30 days", value: <span className="type-h2 tabular">{count(ordersLast30)}</span> },
@@ -188,6 +214,7 @@ export function PriceTab({ analysis }: { analysis: ListingAnalysis }) {
           { label: "In stock", value: <span className="type-h2 tabular">{count(listing.inventory)}</span> },
         ]}
       />
+      <MeeshoScope />
     </div>
   );
 }

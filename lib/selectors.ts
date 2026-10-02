@@ -14,6 +14,9 @@ import { contributionPerOrder, survivalPrice, type CostInputs } from "@/engine/c
 import { visibilityGate } from "@/engine/demand";
 import { daamScore } from "@/engine/score";
 import { bestPriceInBand } from "@/engine/launch";
+import { estimateReturns, estimateRto, type RateEstimate } from "@/engine/priors";
+import { floorBand, type FloorBand } from "@/engine/uncertainty";
+import { classifyRegime, type Regime, type RegimeThresholds } from "@/engine/regime";
 import { RETURN_WRITEDOWN } from "@/engine/constants";
 import type { Funnel } from "@/engine/waterfall";
 import type { Traced } from "@/engine/trace";
@@ -46,6 +49,14 @@ export type ListingAnalysis = {
   launch: Traced<number> | null;
   /** True when an upward suggestion was held back by the Buyer Price Index gate. */
   upwardHeld: boolean;
+  /** The floor as a credibility band — wide while her own data is thin. */
+  range: Traced<FloorBand>;
+  /** Where the refusal and return rates came from. */
+  rates: { rto: RateEstimate; returns: RateEstimate };
+  /** She has overridden freight or packaging for this listing. */
+  customInputs: boolean;
+  /** The market regime of this design, which sets its pricing tempo. */
+  regime: Traced<Regime>;
 };
 
 /** Settings that change what the analysis says. Defaults come from constants. */
@@ -54,7 +65,40 @@ export type AnalysisOptions = {
   margin?: number;
   /** Buyer Price Index gate breached: hold back any suggestion that raises a price. */
   upwardPaused?: boolean;
+  /** Credibility constant K for blending own data with priors. */
+  credibilityK?: number;
+  /** Confidence of the floor range shown while data is thin. */
+  bandConfidence?: number;
+  /** Seller overrides: own logistics, own packaging, bundles. */
+  costOverrides?: Record<string, CostOverride>;
+  /** Regime thresholds (admin-editable). */
+  regime?: RegimeThresholds;
 };
+
+export type CostOverride = { forwardFreight?: number; reverseFreight?: number; packaging?: number };
+
+/**
+ * Cost inputs as the seller sees them: freight exact from the rate card, cost
+ * of goods hers, refusal and return rates blended from her own data and the
+ * fallback-ladder prior (engine/priors.ts), and any overrides she has set.
+ */
+export function costInputsBlended(world: World, listing: Listing, seller: Seller, opts: AnalysisOptions = {}) {
+  const base = costInputsFor(listing, seller);
+  const rto = estimateRto(world, seller.id, seller.codShare, opts.credibilityK);
+  const returns = estimateReturns(world, listing, opts.credibilityK);
+  const o = opts.costOverrides?.[listing.id] ?? {};
+  const inputs: CostInputs = {
+    ...base,
+    rtoRate: rto.value,
+    returnRate: returns.value,
+    forwardFreight: o.forwardFreight ?? base.forwardFreight,
+    reverseFreight: o.reverseFreight ?? base.reverseFreight,
+    packaging: o.packaging ?? base.packaging,
+    rateSources: { rto: { trace: rto.trace, basis: rto.basis }, returns: { trace: returns.trace, basis: returns.basis } },
+    custom: { forwardFreight: o.forwardFreight !== undefined, reverseFreight: o.reverseFreight !== undefined, packaging: o.packaging !== undefined },
+  };
+  return { inputs, rates: { rto, returns }, custom: Object.keys(o).length > 0 };
+}
 
 export function analyseListing(
   world: World,
@@ -66,10 +110,12 @@ export function analyseListing(
 
   const rivals = world.competitors.filter((c) => c.clusterId === listing.clusterId);
   const cluster = world.clusters.find((c) => c.id === listing.clusterId);
-  const inputs = costInputsFor(listing, seller);
+  const { inputs, rates, custom } = costInputsBlended(world, listing, seller, opts);
   const floor = survivalPrice(inputs);
   const ceiling = estimateCeiling(rivals);
   const band = classifyBand(floor.value, ceiling.value, listing.price, opts.margin);
+  // Own delivered parcels behind the return rate — the n the range shrinks with.
+  const range = floorBand(inputs, rates.returns.n, seller.codShare, opts.bandConfidence, opts.credibilityK);
   const contribution = contributionPerOrder(listing.price, inputs);
 
   // The suggestion is the profit-maximising price inside the band, under this
@@ -114,6 +160,10 @@ export function analyseListing(
     visibility,
     launch,
     upwardHeld,
+    range,
+    rates,
+    customInputs: custom,
+    regime: classifyRegime(rivals, opts.regime),
   };
 }
 

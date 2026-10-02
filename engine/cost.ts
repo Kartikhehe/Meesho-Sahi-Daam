@@ -19,7 +19,7 @@
  */
 
 import { GST_ON_FEES, RESALE_RECOVERY } from "./constants";
-import { step, traced, type Assumption, type Traced, type TraceStep } from "./trace";
+import { step, traced, withBasis, type Assumption, type Traced, type TraceStep } from "./trace";
 
 export type CostInputs = {
   /** What the goods cost her. The one number she actually knows. */
@@ -38,7 +38,26 @@ export type CostInputs = {
   /** Resale recovery ρ on goods that come back. Default 0.83. */
   recovery?: number;
   gstOnFees?: number;
+  /**
+   * Where the refusal and return rates came from (engine/priors.ts), so the
+   * floor's derivation shows the blend, its prior level and n.
+   */
+  rateSources?: { rto?: { trace: TraceStep; basis: string }; returns?: { trace: TraceStep; basis: string } };
+  /** Freight or packaging the seller has overridden (own logistics, bundles). */
+  custom?: { forwardFreight?: boolean; reverseFreight?: boolean; packaging?: boolean };
 };
+
+/** The paid-fraction trace with each rate's provenance nested underneath it. */
+function paidFractionFor(i: CostInputs): TraceStep[] {
+  const t = paidFraction(i.rtoRate, i.returnRate).trace;
+  const rto = i.rateSources?.rto;
+  const ret = i.rateSources?.returns;
+  return t.map((s, idx) => {
+    if (idx === 0 && rto) return { ...s, children: [rto.trace], basis: rto.basis };
+    if (idx === 1 && ret) return { ...s, children: [ret.trace], basis: ret.basis };
+    return s;
+  });
+}
 
 export function paidFraction(rtoRate: number, returnRate: number): Traced<number> {
   const delivered = 1 - rtoRate;
@@ -98,12 +117,12 @@ export function costToServe(i: CostInputs): Traced<number> {
   const total = goodsSold + goodsLost + i.packaging + forward + forwardGst + reverse;
 
   const trace: TraceStep[] = [
-    step("Cost of goods on parcels that sold", "बिके माल की लागत", `₹${i.cogs} × ${k.toFixed(3)}`, goodsSold, "INR", "seller_input", "What you paid your supplier", paidFraction(i.rtoRate, i.returnRate).trace),
-    step("Value lost on goods that came back", "वापस आए माल का नुकसान", `₹${i.cogs} × ${(1 - k).toFixed(3)} × ${((1 - rho) * 100).toFixed(0)}%`, goodsLost, "INR", "benchmark", `Refused or returned goods resell for ${(rho * 100).toFixed(0)}% of cost`),
-    step("Packaging", "पैकिंग", `₹${i.packaging}`, i.packaging, "INR", "seller_input", "Polybag, tape and label per parcel"),
-    step("Shipping on delivered parcels", "भेजने का भाड़ा", `₹${i.forwardFreight} × ${d.toFixed(3)} delivered`, forward, "INR", "platform_ledger", "Not charged on parcels refused at the door"),
-    step("GST on that shipping", "भाड़े पर जीएसटी", `${(gst * 100).toFixed(0)}% × ₹${forward.toFixed(2)}`, forwardGst, "INR", "benchmark", "18% on the shipping fee — not on your goods"),
-    step("Return shipping on customer returns", "वापसी का भाड़ा", `₹${i.reverseFreight.toFixed(2)} × ${r.toFixed(3)} returned`, reverse, "INR", "platform_ledger", "The refused-parcel return leg is borne by Valmo, so only customer returns cost you this"),
+    withBasis(step("Cost of goods on parcels that sold", "बिके माल की लागत", `₹${i.cogs} × ${k.toFixed(3)}`, goodsSold, "INR", "seller_input", "What you paid your supplier", paidFractionFor(i)), "SELLER"),
+    withBasis(step("Value lost on goods that came back", "वापस आए माल का नुकसान", `₹${i.cogs} × ${(1 - k).toFixed(3)} × ${((1 - rho) * 100).toFixed(0)}%`, goodsLost, "INR", "benchmark", `Refused or returned goods resell for ${(rho * 100).toFixed(0)}% of cost`), "MEESHO · benchmark"),
+    withBasis(step("Packaging", "पैकिंग", `₹${i.packaging}`, i.packaging, "INR", "seller_input", "Polybag, tape and label per parcel"), i.custom?.packaging ? "SELLER · custom" : "SELLER"),
+    withBasis(step("Shipping on delivered parcels", "भेजने का भाड़ा", `₹${i.forwardFreight} × ${d.toFixed(3)} delivered`, forward, "INR", "platform_ledger", "Not charged on parcels refused at the door"), i.custom?.forwardFreight ? "SELLER · custom" : "MEESHO · exact"),
+    withBasis(step("GST on that shipping", "भाड़े पर जीएसटी", `${(gst * 100).toFixed(0)}% × ₹${forward.toFixed(2)}`, forwardGst, "INR", "benchmark", "18% on the shipping fee — not on your goods"), "Statutory"),
+    withBasis(step("Return shipping on customer returns", "वापसी का भाड़ा", `₹${i.reverseFreight.toFixed(2)} × ${r.toFixed(3)} returned`, reverse, "INR", "platform_ledger", "The refused-parcel return leg is borne by Valmo, so only customer returns cost you this"), i.custom?.reverseFreight ? "SELLER · custom" : "MEESHO · exact"),
     step("Total cost per parcel shipped", "कुल लागत हर पार्सल पर", "sum of the above", total, "INR", "derived"),
   ];
 
@@ -129,7 +148,7 @@ export function survivalPrice(i: CostInputs): Traced<number> {
     value,
     [
       ...cost.trace,
-      step("Share of price left after ads", "विज्ञापन के बाद बचा हिस्सा", `${k.toFixed(3)} paid − ${(1 + gst).toFixed(2)} × ${(i.adSpendRate * 100).toFixed(1)}% ads`, den, "RATIO", "derived", "Ads, and the GST on them, take a cut of the price itself", paidFraction(i.rtoRate, i.returnRate).trace),
+      step("Share of price left after ads", "विज्ञापन के बाद बचा हिस्सा", `${k.toFixed(3)} paid − ${(1 + gst).toFixed(2)} × ${(i.adSpendRate * 100).toFixed(1)}% ads`, den, "RATIO", "derived", "Ads, and the GST on them, take a cut of the price itself", paidFractionFor(i)),
       step("सुरक्षा दाम — Survival price", "सुरक्षा दाम", `₹${cost.value.toFixed(2)} ÷ ${den.toFixed(3)}`, value, "INR", "derived", "Below this price, every parcel you ship costs you money"),
     ],
     cost.assumptions,

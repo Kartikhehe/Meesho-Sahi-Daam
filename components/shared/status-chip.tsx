@@ -1,5 +1,6 @@
 import { VERDICT_COPY } from "@/engine/band";
 import { STAGE_COPY } from "@/engine/lifecycle";
+import { REGIME_TEMPO, type Regime } from "@/engine/regime";
 import { cn } from "@/lib/cn";
 import type { BandVerdict, LifecycleStage } from "@/engine/types";
 
@@ -118,5 +119,17 @@ export function ScoreChip({
       </span>
       <span className="sr-only">out of 100</span>
     </span>
+  );
+}
+
+const REGIME_TONE: Record<Regime, Tone> = { RED_OCEAN: "danger", CONTESTED: "warning", NICHE: "success", NEW_THIN: "info" };
+
+/** The design's market regime, which sets its pricing tempo. */
+export function RegimeChip({ regime, className }: { regime: Regime; className?: string }) {
+  const t = REGIME_TEMPO[regime];
+  return (
+    <StatusChip tone={REGIME_TONE[regime]} dot={false} title={`${t.label} — ${t.note} Ladder ±${Math.round(t.ladder * 100)}%, harvest +${Math.round(t.harvestStep * 100)}% every ${t.harvestDays} days.`} className={className}>
+      {t.label}
+    </StatusChip>
   );
 }

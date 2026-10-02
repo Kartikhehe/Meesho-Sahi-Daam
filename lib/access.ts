@@ -42,6 +42,8 @@ export type Capability =
   | "seller.settlements"
   | "seller.unlockSimulator"
   | "seller.learn"
+  | "seller.costOverride"
+  | "seller.autoPilot"
   // manager scope
   | "manager.cohort"
   | "manager.sellerList"
@@ -56,7 +58,8 @@ export type Capability =
   | "admin.rollout"
   | "admin.simulation"
   | "admin.provenance"
-  | "admin.auditLog";
+  | "admin.auditLog"
+  | "admin.modelSettings";
 
 const MATRIX: Record<Role, readonly Capability[]> = {
   seller: [
@@ -67,6 +70,8 @@ const MATRIX: Record<Role, readonly Capability[]> = {
     "seller.settlements",
     "seller.unlockSimulator",
     "seller.learn",
+    "seller.costOverride",
+    "seller.autoPilot",
   ],
   manager: [
     "manager.cohort",
@@ -97,6 +102,9 @@ const MATRIX: Record<Role, readonly Capability[]> = {
     "admin.simulation",
     "admin.provenance",
     "admin.auditLog",
+    "admin.modelSettings",
+    "seller.costOverride",
+    "seller.autoPilot",
   ],
 };
 
@@ -117,6 +125,10 @@ const AUDITED: ReadonlySet<Capability> = new Set<Capability>([
   "admin.guardrails",
   "admin.rollout",
   "admin.simulation",
+  "admin.modelSettings",
+  // A seller changing her own cost inputs changes what she is told — audited.
+  "seller.costOverride",
+  "seller.autoPilot",
 ]);
 
 export function isAudited(capability: Capability): boolean {

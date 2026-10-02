@@ -13,7 +13,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { Skeleton, StateGate, EmptyState } from "@/components/shared/empty-state";
-import { BandChip, ScoreChip, StageChip } from "@/components/shared/status-chip";
+import { BandChip, RegimeChip, ScoreChip, StageChip, StatusChip } from "@/components/shared/status-chip";
 import { ProductTile } from "@/components/shared/product-tile";
 import { Amount } from "@/components/shared/amount";
 import { Page } from "@/components/shared/page-header";
@@ -107,6 +107,8 @@ export default function SkuPage({ params }: { params: Promise<{ id: string }> })
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
                       <BandChip verdict={analysis.band.value.verdict} lang="hi" />
                       <StageChip stage={analysis.listing.stage} />
+                      <RegimeChip regime={analysis.regime.value} />
+                      {analysis.customInputs ? <StatusChip tone="info" dot={false}>Custom inputs</StatusChip> : null}
                       <ScoreChip score={analysis.score.value} showLabel />
                     </div>
                   </div>

@@ -20,7 +20,7 @@ import { PageHeader, Page } from "@/components/shared/page-header";
 import { ProductTile } from "@/components/shared/product-tile";
 import { CatalogueCard } from "@/components/catalogue/catalogue-card";
 import { MoneyValue } from "@/components/shared/money-value";
-import { BandChip, ScoreChip, StageChip } from "@/components/shared/status-chip";
+import { BandChip, RegimeChip, ScoreChip, StageChip } from "@/components/shared/status-chip";
 import { EmptyState, Skeleton, StateGate } from "@/components/shared/empty-state";
 import { useSeller } from "@/lib/use-seller";
 import { useWorldStore } from "@/lib/store/world-store";
@@ -195,6 +195,13 @@ function CatalogueInner() {
       numeric: true,
       sortValue: (a) => a.score.value,
       render: (a) => <ScoreChip score={a.score.value} />,
+    },
+    {
+      key: "regime",
+      header: "Market",
+      hideOnMobile: true,
+      sortValue: (a) => a.regime.value,
+      render: (a) => <RegimeChip regime={a.regime.value} />,
     },
     {
       key: "stage",

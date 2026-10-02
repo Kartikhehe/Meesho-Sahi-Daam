@@ -14,6 +14,7 @@ import { slabFor } from "@/engine/money";
 import type { ListingAnalysis } from "@/lib/selectors";
 import { inr, pct } from "@/lib/format";
 import { Callout } from "@/components/shared/callout";
+import { CostOverride } from "./cost-override";
 
 export function CostTab({ analysis }: { analysis: ListingAnalysis }) {
   const { listing, inputs, floor } = analysis;
@@ -70,6 +71,8 @@ export function CostTab({ analysis }: { analysis: ListingAnalysis }) {
       <Card className="p-4">
         <WaterfallChart waterfall={waterfall.value} />
       </Card>
+
+      <CostOverride analysis={analysis} />
 
       {slab.gramsToNextSlabDown !== null && slab.savingIfDropped > 0 ? (
         <Callout tone="info" titleHi="वज़न का एक स्लैब" title={`One weight slab is worth ${inr(slab.savingIfDropped)} a parcel`}>

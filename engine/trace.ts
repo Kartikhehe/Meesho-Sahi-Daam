@@ -44,6 +44,11 @@ export type TraceStep = {
   sourceNote?: string;
   /** Nested derivations, so a step can be opened up further. */
   children?: TraceStep[];
+  /**
+   * Where the input came from, as a chip: "SELLER", "MEESHO · exact",
+   * "MEESHO · prior: design cluster, n=1,240", "Statutory".
+   */
+  basis?: string;
 };
 
 export type Assumption = {
@@ -121,4 +126,9 @@ export function mergeAssumptions(...lists: Assumption[][]): Assumption[] {
     for (const a of list) if (!seen.has(a.key)) seen.set(a.key, a);
   }
   return [...seen.values()];
+}
+
+/** Attach a basis chip to a step. */
+export function withBasis(s: TraceStep, basis: string): TraceStep {
+  return { ...s, basis };
 }

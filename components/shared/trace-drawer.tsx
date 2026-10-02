@@ -98,6 +98,20 @@ function Row({ step, depth }: { step: TraceStep; depth: number }) {
               {step.sourceNote}
             </p>
           ) : null}
+          {step.basis ? (
+            <span
+              className={cn(
+                "mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-semibold tracking-wide",
+                step.basis.startsWith("SELLER")
+                  ? "bg-[var(--brand-magenta-50)] text-[var(--brand-ink)]"
+                  : step.basis.includes("prior")
+                    ? "bg-[var(--warning-bg)] text-[var(--warning)]"
+                    : "bg-[var(--info-bg)] text-[var(--info)]",
+              )}
+            >
+              {step.basis}
+            </span>
+          ) : null}
         </div>
 
         <div className="shrink-0 text-right">
